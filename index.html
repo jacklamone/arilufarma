@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Parafarmacia Sassari</title>
-<meta name="description" content="Parafarmacia galenica a Sassari dal 2011. Preparati su misura, analisi senza appuntamento e venticinque anni di esperienza del Dott. Luca Conti."/>
+<meta name="description" content="Parafarmacia galenica a Sassari dal 2011. Preparati su misura, analisi senza appuntamento, assistente WhatsApp per richieste e prenotazioni e venticinque anni di esperienza del Dott. Luca Conti."/>
 <link rel="icon" type="image/x-icon" href="favicon.ico"/>
 <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg"/>
 <link rel="apple-touch-icon" href="assets/img/favicon-32.png"/>
@@ -380,6 +380,34 @@ body::after {
 }
 .srv-cta-card .srv-title{color:var(--gold-lt);}
 .srv-cta-card p{font-size:.76rem;color:rgba(248,244,236,.4);}
+
+/* ════════════════════════════════════
+   ASSISTENTE VIRTUALE
+════════════════════════════════════ */
+.assist{background:var(--cream);padding:8rem 3rem;position:relative;overflow:hidden;}
+.assist-inner{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1.1fr .9fr;gap:5rem;align-items:center;}
+.assist h2{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:clamp(2.6rem,5vw,4rem);color:var(--deep);line-height:1.05;margin-bottom:1.2rem;}
+.assist h2 em{font-style:italic;color:var(--gold);}
+.assist-lead{font-size:.95rem;font-weight:300;color:rgba(17,48,31,.72);line-height:1.8;max-width:460px;margin-bottom:2rem;}
+.assist-feats{list-style:none;margin:0 0 2.4rem;padding:0;display:flex;flex-direction:column;gap:1rem;}
+.assist-feats li{display:flex;gap:.9rem;align-items:flex-start;font-size:.88rem;font-weight:300;color:rgba(17,48,31,.8);line-height:1.6;}
+.assist-feats .af-ico{flex-shrink:0;font-size:1.05rem;line-height:1.5;}
+.assist-feats strong{font-weight:500;color:var(--deep);}
+.assist-chat{background:var(--deep);border-radius:1.6rem;padding:1.2rem;box-shadow:0 30px 80px rgba(17,48,31,.25);max-width:400px;justify-self:center;width:100%;}
+.ac-head{display:flex;align-items:center;gap:.8rem;padding:.4rem .4rem 1rem;border-bottom:1px solid rgba(248,244,236,.08);}
+.ac-ava{width:42px;height:42px;border-radius:50%;background:rgba(201,164,92,.18);display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+.ac-name{font-size:.85rem;font-weight:500;color:var(--cream);}
+.ac-status{font-size:.68rem;color:#7ed99a;display:flex;align-items:center;gap:.35rem;}
+.ac-status::before{content:'';width:7px;height:7px;border-radius:50%;background:#7ed99a;}
+.ac-body{display:flex;flex-direction:column;gap:.6rem;padding:1.1rem .3rem .3rem;}
+.ac-msg{max-width:85%;padding:.65rem .95rem;border-radius:1rem;font-size:.8rem;font-weight:300;line-height:1.55;}
+.ac-in{background:rgba(248,244,236,.09);color:rgba(248,244,236,.92);border-bottom-left-radius:.25rem;align-self:flex-start;}
+.ac-out{background:rgba(201,164,92,.22);color:var(--cream);border-bottom-right-radius:.25rem;align-self:flex-end;}
+.ac-time{font-size:.6rem;color:rgba(248,244,236,.35);align-self:center;margin-top:.3rem;letter-spacing:.08em;}
+@media(max-width:900px){
+  .assist{padding:5rem 1.5rem;}
+  .assist-inner{grid-template-columns:1fr;gap:3rem;}
+}
 
 /* ════════════════════════════════════
    CHI SIAMO
@@ -867,6 +895,7 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
 <div class="mob-menu" id="mobMenu">
   <button class="mob-close" id="mobClose">✕</button>
   <a href="#servizi" onclick="closeMob()">Servizi</a>
+  <a href="#assistente" onclick="closeMob()">Assistente</a>
   <a href="#chi-siamo" onclick="closeMob()">Chi siamo</a>
   <a href="#galenici" onclick="closeMob()">Galenici</a>
   <a href="#prodotti" onclick="closeMob()">Prodotti</a>
@@ -893,6 +922,7 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
 
   <ul class="nav-links">
     <li><a href="#servizi">Servizi</a></li>
+    <li><a href="#assistente">Assistente</a></li>
     <li><a href="#chi-siamo">Chi siamo</a></li>
     <li><a href="#galenici">Galenici</a></li>
     <li><a href="#prodotti">Prodotti</a></li>
@@ -926,7 +956,7 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
   <div class="hero-body">
     <p class="hero-eyebrow">Parafarmacia galenica · Sassari · dal 2011</p>
     <h1 class="hero-h1">La fortuna di<br><em>stare bene.</em></h1>
-    <p class="hero-sub">Preparati galenici su misura, analisi senza appuntamento e venticinque anni di esperienza al servizio della tua salute.</p>
+    <p class="hero-sub">Preparati galenici su misura, analisi senza appuntamento e un assistente WhatsApp sempre attivo per richieste e prenotazioni. Venticinque anni di esperienza al servizio della tua salute.</p>
     <div class="hero-status-wrap">
       <span class="open-pill">
         <span class="open-dot" id="oDot"></span>
@@ -989,7 +1019,7 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
     <div class="srv-head reveal">
       <div class="eyebrow lt">I nostri servizi</div>
       <h2>Tutto senza<br>appuntamento.</h2>
-      <p>Analisi, misurazioni e consulenze rapide. Entra quando preferisci: il nostro team è a tua disposizione.</p>
+      <p>Analisi, misurazioni e consulenze rapide. Entra quando preferisci — oppure prenota il tuo momento con l'assistente WhatsApp: pensa a tutto lui.</p>
     </div>
     <div class="srv-grid">
       <div class="srv-card reveal"><span class="srv-icon">🧪</span><h3 class="srv-title">Preparazioni galeniche</h3><p class="srv-text">Formulazioni officinali e salutistiche personalizzate nel laboratorio.</p></div>
@@ -1008,6 +1038,40 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
         <h3 class="srv-title">Chiamaci ora</h3>
         <p>Il nostro team risponde subito.</p>
         <a href="tel:+39079278245" class="btn-gold" style="margin-top:1rem;align-self:flex-start;font-size:.75rem;padding:.7rem 1.4rem;">079 278245</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════ ASSISTENTE VIRTUALE ════════════ -->
+<section class="assist" id="assistente">
+  <div class="assist-inner">
+    <div>
+      <div class="eyebrow reveal">Novità · Assistente virtuale</div>
+      <h2 class="reveal d1">Sempre aperti,<br><em>su WhatsApp.</em></h2>
+      <p class="assist-lead reveal d2">Puoi passare senza appuntamento, certo. Ma se preferisci, il nostro assistente virtuale ti risponde a qualsiasi ora: richiedi un preparato galenico, prenota un'analisi o una consulenza, e trovi tutto pronto al tuo arrivo.</p>
+      <ul class="assist-feats reveal d2">
+        <li><span class="af-ico">💬</span><span><strong>Risposte immediate,</strong> giorno e notte, sette giorni su sette.</span></li>
+        <li><span class="af-ico">🧪</span><span><strong>Richieste galeniche guidate:</strong> l'assistente raccoglie la tua esigenza e la passa al Dott. Conti.</span></li>
+        <li><span class="af-ico">📅</span><span><strong>Prenotazioni in agenda:</strong> analisi e consulenze fissate direttamente nel calendario della parafarmacia.</span></li>
+        <li><span class="af-ico">🔔</span><span><strong>Conferme e promemoria automatici,</strong> così non dimentichi il tuo appuntamento.</span></li>
+      </ul>
+      <a href="https://wa.me/393273615213?text=Ciao!%20Vorrei%20informazioni." target="_blank" rel="noopener" class="btn-gold reveal d3">Prova l'assistente →</a>
+    </div>
+    <div class="assist-chat reveal d2" aria-hidden="true">
+      <div class="ac-head">
+        <div class="ac-ava">🍀</div>
+        <div>
+          <div class="ac-name">ArilùFarma · Assistente</div>
+          <div class="ac-status">online</div>
+        </div>
+      </div>
+      <div class="ac-body">
+        <div class="ac-msg ac-out">Ciao! Vorrei una tisana rilassante personalizzata 😴</div>
+        <div class="ac-msg ac-in">Volentieri! Posso raccogliere subito la tua richiesta per il Dott. Conti, oppure fissarti una consulenza in negozio. Cosa preferisci?</div>
+        <div class="ac-msg ac-out">Prenotami giovedì pomeriggio</div>
+        <div class="ac-msg ac-in">Fatto ✅ Giovedì ore 17:30 con il Dott. Conti. Ti invio conferma e promemoria qui su WhatsApp!</div>
+        <div class="ac-time">L'ASSISTENTE RISPONDE IN POCHI SECONDI</div>
       </div>
     </div>
   </div>
@@ -1231,7 +1295,7 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
     <div class="wiz-left">
       <div class="eyebrow reveal">Su misura per te</div>
       <h2 class="reveal d1">Crea il tuo preparato<br>in 3 passi.</h2>
-      <p class="reveal d2">Raccontaci la tua esigenza: il Dott. Conti ti risponde su WhatsApp con una proposta entro 24 ore.</p>
+      <p class="reveal d2">Raccontaci la tua esigenza: l'assistente ArilùFarma ti risponde subito su WhatsApp e passa tutto al Dott. Conti, che ti conferma la proposta entro 24 ore.</p>
       <div class="wiz-imgs reveal d3">
         <img src="assets/oro/img/galen.webp" alt="Laboratorio galenico"/>
       </div>
@@ -1375,6 +1439,7 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
       <p class="ft-col-title">Naviga</p>
       <ul class="ft-nav">
         <li><a href="#servizi">Servizi</a></li>
+        <li><a href="#assistente">Assistente</a></li>
         <li><a href="#chi-siamo">Chi siamo</a></li>
         <li><a href="#galenici">Galenici</a></li>
         <li><a href="#prodotti">Prodotti</a></li>

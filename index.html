@@ -159,9 +159,10 @@ body::after {
   position:fixed;inset:0;z-index:200;
   background:rgba(10,31,20,.97);backdrop-filter:blur(20px);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.8rem;
-  transform:translateY(-100%);transition:transform .55s var(--ease);
+  transform:translateY(-100%);visibility:hidden;pointer-events:none;
+  transition:transform .55s var(--ease),visibility 0s .55s;
 }
-.mob-menu.open{transform:translateY(0);}
+.mob-menu.open{transform:translateY(0);visibility:visible;pointer-events:auto;transition:transform .55s var(--ease);}
 .mob-menu a{
   font-family:'Cormorant Garamond',serif;
   font-size:2.8rem;font-weight:300;
@@ -843,6 +844,8 @@ footer::before{
    RESPONSIVE
 ════════════════════════════════════ */
 @media(max-width:1100px){
+  .nav-links{display:none;}
+  .nav-ham{display:flex;}
   .about-inner,.wiz-inner,.con-inner{grid-template-columns:1fr;gap:3.5rem;}
   .gal-grid{grid-template-columns:repeat(2,1fr);}
   .rev-grid{grid-template-columns:1fr;}
@@ -852,8 +855,6 @@ footer::before{
 @media(max-width:768px){
   .nav{padding:1.2rem 1.5rem;}
   .nav.scrolled{padding:.9rem 1.5rem;}
-  .nav-links{display:none;}
-  .nav-ham{display:flex;}
   .stats{grid-template-columns:1fr;padding:3rem 1.5rem;}
   .services,.about,.galenici,.wizard-sec,.products,.reviews,.contacts,footer{padding:5rem 1.5rem;}
   .gal-grid{grid-template-columns:1fr 1fr;}
@@ -868,6 +869,18 @@ footer::before{
   .prod-grid{grid-template-columns:1fr;}
   .wiz-imgs{display:none;}
   .wiz-box{padding:1.5rem;}
+}
+/* Telefoni in landscape: schermo basso, l'hero va compattato
+   per non finire sotto la barra di navigazione fissa */
+@media(max-height:560px) and (orientation:landscape){
+  .hero{padding:6.5rem 1.5rem 4rem;}
+  .hero-eyebrow{font-size:.7rem;margin-bottom:1rem;}
+  .hero-h1{font-size:clamp(2.4rem,11vh,4rem);}
+  .hero-sub{font-size:.85rem;margin-top:1rem;max-width:560px;}
+  .hero-status-wrap{margin:1.2rem auto;}
+  .hero-scroll{display:none;}
+  .mob-menu{gap:.9rem;}
+  .mob-menu a{font-size:1.7rem;}
 }
 html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0;}</style>
 </head>

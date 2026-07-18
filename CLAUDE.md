@@ -32,6 +32,12 @@ assets/oro/img/     Immagini prodotti e categorie
   sviluppo da parte del titolare del progetto, collegato a un gestionale
   e a Google Calendar. Numero WhatsApp: 327 3615213. Il sito ne parla al
   presente perché sito e bot vanno live insieme.
+- **Chatbot** (`chatbot/`): kit del bot WhatsApp — Meta Cloud API +
+  n8n self-hosted su VPS Contabo + Google Sheets (gestionale) + Google
+  Calendar. Guida in `chatbot/README.md`, workflow importabile in
+  `chatbot/n8n/`. Nessun segreto nel repo: il `.env` vive solo sul VPS.
+  La cartella non fa parte del sito, ma su `main` verrebbe pubblicata
+  da Netlify come file statici (innocuo, niente credenziali).
 - **Contatti**: tutte le CTA aprono WhatsApp (wa.me/393273615213).
   Tel: 079 278245 · Email: clienti@parafarmaciasassari.it
   Indirizzo: Via Silvio Vardabasso 1/a, Sassari.

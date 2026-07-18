@@ -1,0 +1,64 @@
+# ArilùFarma · Assistente WhatsApp — n8n self-hosted su Contabo VPS
+#
+# Avvio:   cp .env.example .env  →  compila .env  →  docker compose up -d
+# Guida completa: README.md in questa cartella.
+
+services:
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - BOT_DOMAIN=${BOT_DOMAIN}
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    # n8n resta dietro Caddy: nessuna porta esposta direttamente
+    expose:
+      - "5678"
+    environment:
+      # ── Indirizzo pubblico (usato per generare gli URL dei webhook) ──
+      - N8N_HOST=${BOT_DOMAIN}
+      - N8N_PROTOCOL=https
+      - N8N_PORT=5678
+      - WEBHOOK_URL=https://${BOT_DOMAIN}/
+      - N8N_EDITOR_BASE_URL=https://${BOT_DOMAIN}/
+
+      # ── Fuso orario ──
+      - GENERIC_TIMEZONE=Europe/Rome
+      - TZ=Europe/Rome
+
+      # ── Sicurezza ──
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false   # il workflow legge le variabili META_*/GOOGLE_*
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_RUNNERS_ENABLED=true
+
+      # ── Pulizia esecuzioni vecchie (tiene leggero il database) ──
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168          # ore = 7 giorni
+
+      # ── Variabili usate dal workflow del bot ──
+      - META_VERIFY_TOKEN=${META_VERIFY_TOKEN}
+      - META_ACCESS_TOKEN=${META_ACCESS_TOKEN}
+      - META_PHONE_NUMBER_ID=${META_PHONE_NUMBER_ID}
+      - META_API_VERSION=${META_API_VERSION}
+      - META_TEMPLATE_NOTIFICA=${META_TEMPLATE_NOTIFICA}
+      - TITOLARE_WA_ID=${TITOLARE_WA_ID}
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID}
+      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  caddy_data:
+  caddy_config:
+  n8n_data:

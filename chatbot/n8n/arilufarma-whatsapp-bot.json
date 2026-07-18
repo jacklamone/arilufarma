@@ -1,0 +1,574 @@
+{
+  "name": "ArilùFarma · Assistente WhatsApp",
+  "nodes": [
+    {
+      "name": "Verifica webhook (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, -220],
+      "webhookId": "7d9e5b1a-4f21-4c3a-8f2e-b62f1e0c9a01",
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "name": "Rispondi alla verifica",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [-220, -220],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.mode'] === 'subscribe' && $json.query['hub.verify_token'] === $env.META_VERIFY_TOKEN ? $json.query['hub.challenge'] : 'Token di verifica non valido' }}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Messaggi in arrivo (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-460, 120],
+      "webhookId": "7d9e5b1a-4f21-4c3a-8f2e-b62f1e0c9a02",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "name": "Estrai messaggio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-240, 120],
+      "parameters": {
+        "jsCode": "// Estrae il messaggio utente dal payload del webhook di Meta.\n// Gli aggiornamenti di stato (sent/delivered/read) escono con valido=false.\nconst body = $json.body || {};\nconst change = ((body.entry || [])[0]?.changes || [])[0]?.value || {};\nconst msg = (change.messages || [])[0];\nif (!msg) return [{ json: { valido: false } }];\n\nconst contatto = (change.contacts || [])[0] || {};\nlet testo = '';\nlet bottone = '';\n\nif (msg.type === 'text') {\n  testo = (msg.text?.body || '').trim();\n} else if (msg.type === 'interactive') {\n  const i = msg.interactive || {};\n  if (i.type === 'button_reply') { bottone = i.button_reply.id; testo = i.button_reply.title; }\n  if (i.type === 'list_reply')   { bottone = i.list_reply.id;   testo = i.list_reply.title; }\n} else if (msg.type === 'button') {\n  bottone = msg.button?.payload || '';\n  testo = msg.button?.text || '';\n}\n\nreturn [{ json: {\n  valido: true,\n  waId: msg.from,\n  nome: contatto.profile?.name || '',\n  tipo: msg.type,\n  testo,\n  bottone,\n  msgId: msg.id,\n} }];"
+      }
+    },
+    {
+      "name": "È un messaggio utente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-40, 120],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "valido",
+              "leftValue": "={{ $json.valido }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Registra messaggio",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [160, 120],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Messaggi",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "data": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "wa_id": "={{ $json.waId }}",
+            "nome": "={{ $json.nome }}",
+            "tipo": "={{ $json.tipo }}",
+            "testo": "={{ $json.testo }}",
+            "bottone": "={{ $json.bottone }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Leggi sessione",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [360, 120],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sessioni",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "wa_id",
+              "lookupValue": "={{ $('Estrai messaggio').first().json.waId }}"
+            }
+          ]
+        },
+        "combineFilters": "AND",
+        "options": {}
+      }
+    },
+    {
+      "name": "Cervello del bot",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 120],
+      "parameters": {
+        "jsCode": "// ═══ Cervello del bot: macchina a stati ═══\n// Stati sessione: menu | galenica_attesa | prenota_tipo | prenota_slot | umano\nconst TZ = 'Europe/Rome';\nconst msgIn = $('Estrai messaggio').first().json;\n\n// Testi fissi — ADATTA GLI ORARI a quelli reali della parafarmacia\nconst ORARI_TESTO = 'Lun–Ven 9:00–13:00 e 16:00–20:00 · Sab 9:00–13:00';\nconst INFO = '🕒 *Orari*\\n' + ORARI_TESTO + '\\n\\n' +\n  '📍 Via Silvio Vardabasso 1/a, Sassari\\n' +\n  '📞 079 278245\\n' +\n  '✉️ clienti@parafarmaciasassari.it\\n\\n' +\n  'Per analisi e consulenze non serve appuntamento: puoi passare quando vuoi. ' +\n  'Se preferisci un orario riservato, scrivi *menu* e scegli 📅 Prenota.';\n\n// Sessione salvata (foglio \"Sessioni\")\nconst righe = $('Leggi sessione').all().map(i => i.json).filter(r => r && r.wa_id);\nconst sess = righe.length ? righe[righe.length - 1] : null;\nlet stato = sess?.stato || 'menu';\nlet dati = {};\ntry { dati = sess?.dati ? JSON.parse(sess.dati) : {}; } catch (e) { dati = {}; }\n\nconst testo = (msgIn.testo || '').toLowerCase().trim();\nconst scelta = msgIn.bottone || '';\n\nconst risposte = [];\nconst out = {\n  azione: 'nessuna',\n  dettagli: {},\n  risposte,\n  nuovaSessione: { stato: 'menu', dati: {} },\n};\n\nconst aUtente = (payload) => risposte.push({ to: msgIn.waId, payload });\nconst testoWa = (t) => ({ type: 'text', text: { body: t, preview_url: false } });\n\nfunction avvisaTitolare(tipo, dettaglio) {\n  const OWNER = $env.TITOLARE_WA_ID;\n  if (!OWNER) return;\n  const TEMPLATE = $env.META_TEMPLATE_NOTIFICA;\n  if (TEMPLATE) {\n    // Template approvato: funziona anche fuori dalla finestra delle 24 ore\n    risposte.push({ to: OWNER, payload: { type: 'template', template: {\n      name: TEMPLATE, language: { code: 'it' },\n      components: [{ type: 'body', parameters: [\n        { type: 'text', text: tipo }, { type: 'text', text: dettaglio },\n      ]}],\n    }}});\n  } else {\n    // Testo libero: arriva solo se il titolare ha scritto al bot nelle ultime 24h\n    risposte.push({ to: OWNER, payload: testoWa('🔔 ' + tipo + '\\n' + dettaglio) });\n  }\n}\n\nconst MENU = {\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    header: { type: 'text', text: 'ArilùFarma · Assistente' },\n    body: { text: 'Ciao' + (msgIn.nome ? ' ' + msgIn.nome.split(' ')[0] : '') + '! 👋 Sono l\\u2019assistente virtuale di ArilùFarma. Come posso aiutarti?' },\n    footer: { text: 'Scrivi \"menu\" in qualsiasi momento per tornare qui.' },\n    action: { button: 'Scegli un servizio', sections: [{ title: 'Servizi', rows: [\n      { id: 'galenica',  title: '🧪 Preparato galenico', description: 'Richiedi un preparato su misura' },\n      { id: 'prenota',   title: '📅 Prenota',            description: 'Analisi o consulenza in sede' },\n      { id: 'info',      title: '🕒 Orari e contatti',   description: 'Dove siamo e quando' },\n      { id: 'operatore', title: '👤 Parla con noi',      description: 'Ti risponde il Dott. Conti' },\n    ]}]},\n  },\n};\n\nconst SALUTI = ['ciao', 'salve', 'buongiorno', 'buonasera', 'menu', 'start', 'annulla', 'indietro'];\n\n// ── Modalità \"umano\": il bot tace per 24h dopo il passaggio a operatore ──\nif (stato === 'umano') {\n  const da = dati.da ? DateTime.fromISO(dati.da) : DateTime.now().minus({ days: 2 });\n  const attiva = DateTime.now().diff(da, 'hours').hours < 24;\n  if (attiva && testo !== 'menu') {\n    // Silenzio: la conversazione è in mano al Dott. Conti\n    out.nuovaSessione = { stato: 'umano', dati };\n    return [{ json: out }];\n  }\n  stato = 'menu';\n}\n\n// ── Comandi di reset ──\nif (SALUTI.includes(testo) && !scelta) {\n  aUtente(MENU);\n  out.nuovaSessione = { stato: 'menu', dati: {} };\n  return [{ json: out }];\n}\n\n// ── Scelte dal menu principale ──\nif (scelta === 'galenica') {\n  aUtente(testoWa('🧪 *Preparato galenico su misura*\\n\\nScrivimi in un unico messaggio di cosa hai bisogno: il preparato (o la ricetta), il dosaggio se lo conosci e per chi è.\\n\\nPasso tutto al Dott. Conti, che ti conferma la proposta entro 24 ore.'));\n  out.nuovaSessione = { stato: 'galenica_attesa', dati: {} };\n  return [{ json: out }];\n}\n\nif (scelta === 'prenota') {\n  aUtente({ type: 'interactive', interactive: {\n    type: 'button',\n    body: { text: '📅 Perfetto! Cosa vuoi prenotare?' },\n    action: { buttons: [\n      { type: 'reply', reply: { id: 'tipo_analisi',    title: 'Analisi' } },\n      { type: 'reply', reply: { id: 'tipo_consulenza', title: 'Consulenza' } },\n    ]},\n  }});\n  out.nuovaSessione = { stato: 'prenota_tipo', dati: {} };\n  return [{ json: out }];\n}\n\nif (scelta === 'info') {\n  aUtente(testoWa(INFO));\n  out.nuovaSessione = { stato: 'menu', dati: {} };\n  return [{ json: out }];\n}\n\nif (scelta === 'operatore') {\n  aUtente(testoWa('👤 Ho avvisato il Dott. Conti: ti risponderà qui su WhatsApp appena possibile.\\n\\nNel frattempo scrivi pure la tua domanda. Per tornare all\\u2019assistente automatico scrivi *menu*.'));\n  avvisaTitolare('Richiesta di contatto', (msgIn.nome || 'Un cliente') + ' (+' + msgIn.waId + ') vuole parlare con te su WhatsApp.');\n  out.nuovaSessione = { stato: 'umano', dati: { da: DateTime.now().setZone(TZ).toISO() } };\n  return [{ json: out }];\n}\n\n// ── Stato: attesa descrizione galenica ──\nif (stato === 'galenica_attesa') {\n  if (msgIn.tipo !== 'text' || !msgIn.testo) {\n    aUtente(testoWa('Scrivimi due righe di testo con la tua richiesta, così la passo al Dott. Conti. 🙏'));\n    out.nuovaSessione = { stato: 'galenica_attesa', dati: {} };\n    return [{ json: out }];\n  }\n  out.azione = 'salva_richiesta';\n  out.dettagli = { descrizione: msgIn.testo, nome: msgIn.nome, waId: msgIn.waId };\n  aUtente(testoWa('✅ Richiesta ricevuta! Il Dott. Conti la sta già guardando: ti risponde qui su WhatsApp entro 24 ore con la proposta.\\n\\nScrivi *menu* se ti serve altro.'));\n  avvisaTitolare('Nuova richiesta galenica', (msgIn.nome || 'Cliente') + ' (+' + msgIn.waId + '): ' + msgIn.testo.slice(0, 300));\n  out.nuovaSessione = { stato: 'menu', dati: {} };\n  return [{ json: out }];\n}\n\n// ── Stato: scelta del tipo di prenotazione ──\nif (stato === 'prenota_tipo') {\n  if (scelta === 'tipo_analisi' || scelta === 'tipo_consulenza') {\n    const tipo = scelta === 'tipo_analisi' ? 'Analisi' : 'Consulenza';\n    const ora = DateTime.now().setZone(TZ);\n    out.azione = 'proponi_slot';\n    out.dettagli = { tipo, finestra: {\n      da: ora.toUTC().toISO(),\n      a: ora.plus({ days: 7 }).endOf('day').toUTC().toISO(),\n    }};\n    out.nuovaSessione = { stato: 'prenota_slot', dati: { tipo } };\n    return [{ json: out }];\n  }\n  aUtente(testoWa('Usa i pulsanti qui sopra per scegliere 😊 Oppure scrivi *menu* per ricominciare.'));\n  out.nuovaSessione = { stato: 'prenota_tipo', dati: {} };\n  return [{ json: out }];\n}\n\n// ── Stato: scelta dello slot ──\nif (stato === 'prenota_slot') {\n  if (scelta.startsWith('slot_')) {\n    const inizio = DateTime.fromISO(scelta.slice(5), { zone: TZ });\n    const fine = inizio.plus({ minutes: 30 });\n    const tipo = dati.tipo || 'Appuntamento';\n    const quando = inizio.setLocale('it').toFormat(\"cccc d LLLL 'alle' HH:mm\");\n    out.azione = 'crea_prenotazione';\n    out.dettagli = {\n      tipo,\n      nome: msgIn.nome || 'Cliente WhatsApp',\n      waId: msgIn.waId,\n      inizio: inizio.toISO(),\n      fine: fine.toISO(),\n      quando,\n    };\n    aUtente(testoWa('Fatto ✅ *' + tipo + '* fissata per *' + quando + '* con il Dott. Conti.\\n\\n📍 Via Silvio Vardabasso 1/a, Sassari\\n\\nSe devi spostarla o disdirla, scrivici qui. A presto!'));\n    avvisaTitolare('Nuova prenotazione', tipo + ' · ' + quando + ' · ' + (msgIn.nome || 'Cliente') + ' (+' + msgIn.waId + ')');\n    out.nuovaSessione = { stato: 'menu', dati: {} };\n    return [{ json: out }];\n  }\n  aUtente(testoWa('Scegli un orario dalla lista qui sopra, oppure scrivi *menu* per ricominciare.'));\n  out.nuovaSessione = { stato: 'prenota_slot', dati };\n  return [{ json: out }];\n}\n\n// ── Fallback: non ho capito → menu ──\naUtente(testoWa('Non sono sicuro di aver capito 🤔 Ecco cosa posso fare per te:'));\naUtente(MENU);\nout.nuovaSessione = { stato: 'menu', dati: {} };\nreturn [{ json: out }];"
+      }
+    },
+    {
+      "name": "Serve il calendario?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [760, 120],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "proponi",
+              "leftValue": "={{ $json.azione }}",
+              "rightValue": "proponi_slot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Eventi in agenda",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, -40],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($env.GOOGLE_CALENDAR_ID) }}/events",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "timeMin", "value": "={{ $json.dettagli.finestra.da }}" },
+            { "name": "timeMax", "value": "={{ $json.dettagli.finestra.a }}" },
+            { "name": "singleEvents", "value": "true" },
+            { "name": "orderBy", "value": "startTime" },
+            { "name": "maxResults", "value": "250" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Filtra slot liberi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, -40],
+      "parameters": {
+        "jsCode": "// Calcola gli slot liberi incrociando gli orari di apertura con l'agenda.\n// ADATTA \"ORARI\" agli orari reali della parafarmacia (weekday: 1=lun … 7=dom).\nconst TZ = 'Europe/Rome';\nconst ORARI = {\n  1: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  2: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  3: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  4: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  5: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  6: [[9, 0, 13, 0]],\n  7: [],\n};\nconst DURATA_MIN = 30;      // durata di ogni appuntamento\nconst MAX_SLOT = 9;         // massimo 10 righe in una lista WhatsApp\nconst MAX_PER_GIORNO = 3;   // per proporre più giorni diversi\n\nconst cervello = $('Cervello del bot').first().json;\nconst tipo = cervello.dettagli.tipo || 'Appuntamento';\n\n// La risposta dell'API Calendar è un item con { items: [...] }\nconst eventi = $input.all().flatMap(i => i.json.items || []);\nconst occupati = eventi\n  .filter(e => e.status !== 'cancelled')\n  .map(e => ({\n    da: DateTime.fromISO(e.start?.dateTime || (e.start?.date + 'T00:00:00'), { zone: TZ }),\n    a:  DateTime.fromISO(e.end?.dateTime   || (e.end?.date   + 'T00:00:00'), { zone: TZ }),\n  }));\n\nconst slots = [];\nconst oggi = DateTime.now().setZone(TZ).startOf('day');\nfor (let d = 1; d <= 7 && slots.length < MAX_SLOT; d++) {\n  const g = oggi.plus({ days: d });\n  let delGiorno = 0;\n  for (const [h1, m1, h2, m2] of (ORARI[g.weekday] || [])) {\n    let t = g.set({ hour: h1, minute: m1 });\n    const chiusura = g.set({ hour: h2, minute: m2 });\n    while (t.plus({ minutes: DURATA_MIN }) <= chiusura && slots.length < MAX_SLOT && delGiorno < MAX_PER_GIORNO) {\n      const tFine = t.plus({ minutes: DURATA_MIN });\n      const libero = !occupati.some(o => t < o.a && tFine > o.da);\n      if (libero) { slots.push(t); delGiorno++; }\n      t = tFine;\n    }\n  }\n}\n\nconst waId = $('Estrai messaggio').first().json.waId;\nconst risposte = [];\n\nif (!slots.length) {\n  risposte.push({ to: waId, payload: { type: 'text', text: {\n    body: 'In questi giorni l\\u2019agenda è piena 😔 Scrivici qui la tua disponibilità e ti ricontattiamo noi, oppure passa in sede senza appuntamento.',\n    preview_url: false,\n  }}});\n  return [{ json: { azione: 'nessuna', risposte, nuovaSessione: { stato: 'menu', dati: {} } } }];\n}\n\nrisposte.push({ to: waId, payload: { type: 'interactive', interactive: {\n  type: 'list',\n  header: { type: 'text', text: 'Orari disponibili' },\n  body: { text: '📅 Ecco i primi orari liberi per la tua *' + tipo.toLowerCase() + '*. Scegli quello che preferisci:' },\n  footer: { text: 'Scrivi \"menu\" per annullare.' },\n  action: { button: 'Vedi gli orari', sections: [{ title: tipo, rows: slots.map(t => ({\n    id: 'slot_' + t.toISO({ suppressMilliseconds: true, includeOffset: false }),\n    title: t.setLocale('it').toFormat('ccc d LLL · HH:mm'),\n    description: tipo + ' · 30 minuti',\n  }))}]},\n}}});\n\nreturn [{ json: { azione: 'nessuna', risposte, nuovaSessione: cervello.nuovaSessione } }];"
+      }
+    },
+    {
+      "name": "Che azione fare?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [960, 280],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "r1",
+                    "leftValue": "={{ $json.azione }}",
+                    "rightValue": "crea_prenotazione",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "prenotazione"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $json.azione }}",
+                    "rightValue": "salva_richiesta",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "richiesta galenica"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "solo risposta"
+        }
+      }
+    },
+    {
+      "name": "Crea evento in agenda",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1160, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($env.GOOGLE_CALENDAR_ID) }}/events",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ summary: $json.dettagli.tipo + ' · ' + $json.dettagli.nome + ' (WhatsApp)', description: 'Prenotazione dall\\u2019assistente WhatsApp ArilùFarma.\\nCliente: ' + $json.dettagli.nome + '\\nWhatsApp: +' + $json.dettagli.waId, start: { dateTime: $json.dettagli.inizio, timeZone: 'Europe/Rome' }, end: { dateTime: $json.dettagli.fine, timeZone: 'Europe/Rome' } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Salva prenotazione",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1360, 180],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prenotazioni",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "data": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "wa_id": "={{ $('Cervello del bot').first().json.dettagli.waId }}",
+            "nome": "={{ $('Cervello del bot').first().json.dettagli.nome }}",
+            "tipo": "={{ $('Cervello del bot').first().json.dettagli.tipo }}",
+            "inizio": "={{ $('Cervello del bot').first().json.dettagli.inizio }}",
+            "stato": "confermata"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Salva richiesta galenica",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1160, 380],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "RichiesteGaleniche",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "data": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "wa_id": "={{ $json.dettagli.waId }}",
+            "nome": "={{ $json.dettagli.nome }}",
+            "descrizione": "={{ $json.dettagli.descrizione }}",
+            "stato": "nuova"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Prepara invii",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 120],
+      "parameters": {
+        "jsCode": "// Trasforma l'array \"risposte\" in un item per ogni messaggio da inviare.\nconst cervello = $('Cervello del bot').first().json;\nconst sorgente = ($json && Array.isArray($json.risposte)) ? $json : cervello;\nconst nuovaSessione = sorgente.nuovaSessione || cervello.nuovaSessione || { stato: 'menu', dati: {} };\nreturn (sorgente.risposte || []).map(r => ({ json: {\n  to: r.to,\n  payload: r.payload,\n  statoSessione: nuovaSessione.stato,\n  datiSessione: JSON.stringify(nuovaSessione.dati || {}),\n} }));"
+      }
+    },
+    {
+      "name": "Invia su WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $env.META_API_VERSION || \"v20.0\" }}/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $json.to }, $json.payload)) }}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Aggiorna sessione",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1980, 120],
+      "executeOnce": true,
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sessioni",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "wa_id": "={{ $('Estrai messaggio').first().json.waId }}",
+            "nome": "={{ $('Estrai messaggio').first().json.nome }}",
+            "stato": "={{ $('Prepara invii').first().json.statoSessione }}",
+            "dati": "={{ $('Prepara invii').first().json.datiSessione }}",
+            "aggiornato": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}"
+          },
+          "matchingColumns": ["wa_id"],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-520, -420],
+      "parameters": {
+        "width": 620,
+        "height": 140,
+        "content": "## Assistente WhatsApp ArilùFarma\nPrima di attivare: 1) crea le credenziali Google (Sheets + Calendar) e assegnale ai nodi Google; 2) compila il file `.env` sul VPS; 3) configura il webhook su Meta con l'URL di produzione `/webhook/whatsapp`.\nGuida completa: `chatbot/README.md` nel repository."
+      }
+    }
+  ],
+  "connections": {
+    "Verifica webhook (GET)": {
+      "main": [
+        [
+          { "node": "Rispondi alla verifica", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Messaggi in arrivo (POST)": {
+      "main": [
+        [
+          { "node": "Estrai messaggio", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Estrai messaggio": {
+      "main": [
+        [
+          { "node": "È un messaggio utente?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "È un messaggio utente?": {
+      "main": [
+        [
+          { "node": "Registra messaggio", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Registra messaggio": {
+      "main": [
+        [
+          { "node": "Leggi sessione", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Leggi sessione": {
+      "main": [
+        [
+          { "node": "Cervello del bot", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Cervello del bot": {
+      "main": [
+        [
+          { "node": "Serve il calendario?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Serve il calendario?": {
+      "main": [
+        [
+          { "node": "Eventi in agenda", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Che azione fare?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Eventi in agenda": {
+      "main": [
+        [
+          { "node": "Filtra slot liberi", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filtra slot liberi": {
+      "main": [
+        [
+          { "node": "Prepara invii", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Che azione fare?": {
+      "main": [
+        [
+          { "node": "Crea evento in agenda", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Salva richiesta galenica", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Prepara invii", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Crea evento in agenda": {
+      "main": [
+        [
+          { "node": "Salva prenotazione", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Salva prenotazione": {
+      "main": [
+        [
+          { "node": "Prepara invii", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Salva richiesta galenica": {
+      "main": [
+        [
+          { "node": "Prepara invii", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepara invii": {
+      "main": [
+        [
+          { "node": "Invia su WhatsApp", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Invia su WhatsApp": {
+      "main": [
+        [
+          { "node": "Aggiorna sessione", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Rome"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

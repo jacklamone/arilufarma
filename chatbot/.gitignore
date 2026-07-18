@@ -1,0 +1,5 @@
+# Mai committare i segreti: il .env vive solo sul VPS
+.env
+*.env
+!.env.example
+n8n-backup-*.tar.gz

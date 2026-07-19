@@ -840,6 +840,27 @@ footer::before{
 .wa-fab:hover{transform:translateY(-2px) scale(1.03);background:var(--gold-lt);box-shadow:0 14px 36px rgba(201,164,92,.62);}
 .wa-fab svg{width:17px;height:17px;flex-shrink:0;}
 
+/* Torna su — richiama l'indicatore "Scorri" dell'hero, ma verso l'alto */
+.to-top{
+  position:fixed;bottom:1.9rem;left:1.9rem;z-index:50;
+  display:flex;flex-direction:column;align-items:center;gap:.45rem;
+  background:none;border:none;cursor:pointer;padding:.3rem;
+  color:var(--gold);
+  font-size:.55rem;font-weight:400;letter-spacing:.32em;text-transform:uppercase;
+  opacity:0;visibility:hidden;transform:translateY(10px);
+  transition:opacity .4s var(--ease),transform .4s var(--ease),visibility 0s .4s;
+}
+.to-top.show{opacity:.85;visibility:visible;transform:translateY(0);transition:opacity .4s var(--ease),transform .4s var(--ease);}
+.to-top:hover{opacity:1;}
+.to-top svg{width:15px;height:15px;stroke:var(--gold);}
+.to-top-bar{width:1px;height:34px;background:linear-gradient(to top,var(--gold),transparent);animation:scrollBarUp 1.8s ease-in-out infinite;}
+@keyframes scrollBarUp{
+  0%{transform:scaleY(0);transform-origin:bottom;}
+  49%{transform:scaleY(1);transform-origin:bottom;}
+  50%{transform:scaleY(1);transform-origin:top;}
+  100%{transform:scaleY(0);transform-origin:top;}
+}
+
 /* ════════════════════════════════════
    RESPONSIVE
 ════════════════════════════════════ */
@@ -1487,6 +1508,13 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
   WhatsApp
 </a>
 
+<!-- Torna su -->
+<button class="to-top" id="toTop" aria-label="Torna all'inizio della pagina">
+  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 15l-6-6-6 6"/></svg>
+  <span class="to-top-bar"></span>
+  <span>Su</span>
+</button>
+
 <script>
 /* ── GALENIC FLIP + LIGHTBOX ── */
 // Flip card: click outside product rows toggles open/closed
@@ -1595,7 +1623,12 @@ window.addEventListener('load',()=>setTimeout(()=>document.getElementById('loade
 
 /* ── NAVBAR ── */
 const nav=document.getElementById('nav');
-window.addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>80),{passive:true});
+const toTop=document.getElementById('toTop');
+window.addEventListener('scroll',()=>{
+  nav.classList.toggle('scrolled',scrollY>80);
+  toTop.classList.toggle('show',scrollY>innerHeight*0.9);
+},{passive:true});
+toTop.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
 
 /* ── MOBILE MENU ── */
 const mobMenu=document.getElementById('mobMenu');

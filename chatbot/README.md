@@ -219,12 +219,12 @@ notifiche **sempre**, serve un template approvato:
 1. Business Manager → **Account WhatsApp → Gestione messaggi** (WhatsApp
    Manager) → **Template di messaggio → Crea template**.
 2. Categoria **Utility**, lingua **Italiano**, nome `notifica_arilufarma`.
-3. Corpo:
+3. Corpo (2 variabili):
 
    ```
-   🔔 {{1}}
-   {{2}}
-   Apri il gestionale per i dettagli.
+   🔔 {{1}}.
+   Dettagli: {{2}}
+   Apri il foglio-gestionale per gestirlo.
    ```
 
 4. Dopo l'approvazione (in genere pochi minuti/ore) metti il nome del

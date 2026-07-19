@@ -31,6 +31,8 @@ Cosa fa il bot (workflow `n8n/arilufarma-whatsapp-bot.json`):
   conferma al cliente.
 - **👤 Passaggio a operatore**: avvisa il titolare e il bot tace per
   24 ore su quella chat (o finché il cliente scrive `menu`).
+- **⏰ Promemoria** (workflow separato): il giorno prima dell'appuntamento
+  il cliente riceve un promemoria automatico su WhatsApp.
 - **Registro messaggi** completo su Google Sheets.
 
 Contenuto della cartella:
@@ -40,7 +42,8 @@ Contenuto della cartella:
 | `docker-compose.yml` | n8n + Caddy (HTTPS automatico) per il VPS |
 | `Caddyfile` | configurazione del reverse proxy |
 | `.env.example` | modello delle variabili d'ambiente (da copiare in `.env` **solo sul VPS**) |
-| `n8n/arilufarma-whatsapp-bot.json` | workflow n8n da importare |
+| `n8n/arilufarma-whatsapp-bot.json` | workflow principale del bot (da importare) |
+| `n8n/arilufarma-reminder.json` | workflow dei promemoria appuntamento (da importare) |
 | `fogli-google.md` | struttura del foglio Google (il "gestionale") |
 
 > ⚠️ **Nessun segreto in questo repository.** Token, chiavi e `.env`
@@ -361,10 +364,41 @@ docker run --rm -v arilubot_n8n_data:/data -v $(pwd):/backup alpine \
 - Se l'account **Netlify** esaurisce i crediti il *sito* non si
   aggiorna, ma il bot non c'entra: gira sul VPS ed è indipendente.
 
+## 12 · Promemoria appuntamenti (workflow separato)
+
+Il file `n8n/arilufarma-reminder.json` è un **secondo workflow**,
+indipendente dal bot: ogni giorno alle **18:00** legge la scheda
+`Prenotazioni`, trova gli appuntamenti del **giorno dopo** e invia a ogni
+cliente un promemoria su WhatsApp. Gira una volta al giorno, quindi ogni
+appuntamento riceve **un solo** promemoria (nessun doppione).
+
+Poiché il promemoria parte il giorno prima — quasi sempre **oltre le 24
+ore** dall'ultimo messaggio del cliente — serve un **template approvato**:
+
+1. WhatsApp Manager → **Template di messaggio → Crea template**.
+2. Categoria **Utility**, lingua **Italiano**, nome `promemoria_arilufarma`.
+3. Corpo (3 variabili):
+
+   ```
+   Ciao {{1}} 👋 ti ricordiamo il tuo appuntamento in ArilùFarma:
+   {{2}} domani {{3}}. Se non puoi venire, scrivici qui. A presto!
+   ```
+
+4. Dopo l'approvazione, metti il nome in `META_TEMPLATE_PROMEMORIA` nel
+   `.env` e riavvia (`docker compose up -d`).
+
+**Attivazione:** importa il file come il workflow principale, assegna le
+stesse credenziali Google (nodo `Leggi prenotazioni`), poi **attiva** il
+workflow. Attivalo solo **dopo** aver collaudato il bot. Per provarlo
+subito senza aspettare le 18:00, apri il workflow e usa **Execute
+Workflow**: manda i promemoria per gli appuntamenti di domani.
+
+> Senza template il workflow ripiega su un messaggio normale, che però
+> arriva solo se il cliente ha scritto al bot nelle ultime 24 ore: per i
+> promemoria veri il template è di fatto necessario.
+
 ## Sviluppi futuri (non inclusi in questa versione)
 
-- **Promemoria automatico** il giorno prima dell'appuntamento (workflow
-  n8n schedulato + template Utility).
 - **Risposte AI** per le domande libere (nodo AI Agent di n8n con
   l'API di Claude) al posto del fallback "non ho capito".
 - **Catalogo prodotti** su una scheda del foglio, per rispondere a

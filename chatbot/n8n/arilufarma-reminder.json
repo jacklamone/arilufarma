@@ -1,0 +1,112 @@
+{
+  "name": "ArilùFarma · Promemoria appuntamenti",
+  "nodes": [
+    {
+      "name": "Ogni giorno alle 18",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-420, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "days", "triggerAtHour": 18, "triggerAtMinute": 0 }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Leggi prenotazioni",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [-200, 0],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.GOOGLE_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prenotazioni",
+          "mode": "name"
+        },
+        "options": {}
+      }
+    },
+    {
+      "name": "Chi ha appuntamento domani?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [20, 0],
+      "parameters": {
+        "jsCode": "// Seleziona le prenotazioni di DOMANI e prepara un promemoria per ciascuna.\n// Gira una volta al giorno (18:00): ogni appuntamento cade in un solo giro,\n// quindi niente doppi invii senza bisogno di segnare le righe.\nconst TZ = 'Europe/Rome';\nconst domani = DateTime.now().setZone(TZ).plus({ days: 1 }).toFormat('yyyy-LL-dd');\n\nconst righe = $input.all().map(i => i.json).filter(r => r && r.inizio);\nconst TEMPLATE = $env.META_TEMPLATE_PROMEMORIA;\nconst out = [];\n\nfor (const r of righe) {\n  const stato = String(r.stato || '').toLowerCase();\n  if (stato === 'annullata' || stato === 'disdetta') continue;\n\n  let dt;\n  try { dt = DateTime.fromISO(String(r.inizio), { zone: TZ }); } catch (e) { continue; }\n  if (!dt.isValid || dt.toFormat('yyyy-LL-dd') !== domani) continue;\n\n  const nome = String(r.nome || '').split(' ')[0] || '';\n  const tipo = r.tipo || 'appuntamento';\n  const ora = dt.setLocale('it').toFormat('HH:mm');\n\n  let payload;\n  if (TEMPLATE) {\n    // Template approvato: unico modo per scrivere oltre le 24 ore\n    payload = { type: 'template', template: {\n      name: TEMPLATE, language: { code: 'it' },\n      components: [{ type: 'body', parameters: [\n        { type: 'text', text: nome || 'cliente' },\n        { type: 'text', text: String(tipo) },\n        { type: 'text', text: 'alle ' + ora },\n      ]}],\n    }};\n  } else {\n    // Fallback testo (arriva solo entro 24h dall'ultimo messaggio del cliente)\n    payload = { type: 'text', text: {\n      body: 'Ciao' + (nome ? ' ' + nome : '') + ' 👋 promemoria: ' + tipo +\n            ' domani alle ' + ora + ' in ArilùFarma. A presto!',\n      preview_url: false,\n    }};\n  }\n\n  out.push({ json: { to: String(r.wa_id), payload } });\n}\n\nreturn out;"
+      }
+    },
+    {
+      "name": "Invia promemoria",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/{{ $env.META_API_VERSION || \"v20.0\" }}/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.assign({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $json.to }, $json.payload)) }}",
+        "options": {}
+      }
+    },
+    {
+      "name": "Nota",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-460, -200],
+      "parameters": {
+        "width": 700,
+        "height": 150,
+        "content": "## Promemoria appuntamenti (workflow separato)\nOgni giorno alle 18:00 legge la scheda *Prenotazioni*, trova gli appuntamenti di domani e invia un promemoria WhatsApp. Fuori dalle 24h serve il template `META_TEMPLATE_PROMEMORIA` (vedi README §12). Usa le stesse credenziali Google e le stesse variabili META_* del bot principale. Attiva questo workflow **dopo** aver collaudato il bot."
+      }
+    }
+  ],
+  "connections": {
+    "Ogni giorno alle 18": {
+      "main": [
+        [
+          { "node": "Leggi prenotazioni", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Leggi prenotazioni": {
+      "main": [
+        [
+          { "node": "Chi ha appuntamento domani?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Chi ha appuntamento domani?": {
+      "main": [
+        [
+          { "node": "Invia promemoria", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Rome"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

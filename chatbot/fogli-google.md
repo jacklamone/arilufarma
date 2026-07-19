@@ -43,13 +43,21 @@ la colonna `stato` (es. `nuova` → `gestita`).
 ## Scheda `Prenotazioni`
 
 Copia di riepilogo delle prenotazioni (l'evento vero è su Google
-Calendar; questa scheda serve come storico e per eventuali statistiche).
+Calendar; questa scheda serve come storico e per il workflow dei
+promemoria). La colonna `reminder` è a disposizione per segnare a mano
+l'invio; il workflow dei promemoria non ne ha bisogno (evita i doppioni
+girando una sola volta al giorno).
 
-| data | wa_id | nome | tipo | inizio | stato |
-|------|-------|------|------|--------|-------|
-| 2026-07-16 10:40:02 | 3933512345678 | Maria Rossi | Analisi | 2026-07-17T17:30:00+02:00 | confermata |
+| data | wa_id | nome | tipo | inizio | stato | reminder |
+|------|-------|------|------|--------|-------|----------|
+| 2026-07-16 10:40:02 | 3933512345678 | Maria Rossi | Analisi | 2026-07-17T17:30:00+02:00 | confermata | |
 
 ## Creazione rapida
+
+> ⚡ **Già fatto:** il foglio «ArilùFarma · Gestionale bot» con le 4
+> schede è già stato creato nel Drive dell'account collegato. Ti serve
+> solo il suo **ID** (nell'URL, tra `/d/` e `/edit`) per `GOOGLE_SHEET_ID`.
+> Le istruzioni qui sotto servono solo se devi ricrearlo da zero.
 
 1. [sheets.new](https://sheets.new) → rinomina il file
    «ArilùFarma · Gestionale bot».

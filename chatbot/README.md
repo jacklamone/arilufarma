@@ -150,15 +150,24 @@ container con le nuove variabili).
 
 ### 5.2 Numero di telefono
 
-Nella sezione **WhatsApp → API Setup** Meta fornisce un **numero di
-prova** gratuito: usalo per tutti i test (può scrivere solo a max 5
-numeri registrati come destinatari di prova — aggiungi il tuo e quello
-del titolare).
+**Fase di test (adesso).** In **WhatsApp → API Setup** Meta assegna in
+automatico un **numero di prova** come *mittente* del bot (non si può
+scegliere): è il numero a cui scriveranno i tester. In modalità di prova
+il bot può però rispondere **solo ai numeri registrati come destinatari**
+(max 5). Registra qui il numero di test concordato **+39 329 7751951**:
+in **API Setup → riquadro "To" → Manage phone number list → Add phone
+number**, poi conferma col codice che Meta invia via WhatsApp/SMS.
+Aggiungi allo stesso modo ogni altro telefono che userai per provare
+(incluso quello impostato in `TITOLARE_WA_ID`, vedi §5.6).
 
-Per il go-live aggiungi il numero vero **327 3615213** da
+> In questa fase **non** tocchiamo il numero reale 327 3615213: resta sul
+> sito e si migra solo al go-live.
+
+**Go-live (più avanti).** Aggiungi il numero vero **327 3615213** da
 **WhatsApp → Phone numbers → Add phone number** (verifica via SMS/chiamata;
 vedi l'avvertenza sulla migrazione al punto 1). Imposta il display name
-«ArilùFarma» — Meta lo deve approvare.
+«ArilùFarma» — Meta lo deve approvare. A quel punto i destinatari di prova
+non servono più: il bot può rispondere a chiunque scriva.
 
 Copia l'**ID del numero di telefono** (Phone number ID, un numero lungo)
 in `META_PHONE_NUMBER_ID` nel `.env`.
@@ -222,6 +231,12 @@ notifiche **sempre**, serve un template approvato:
 Senza template il bot ripiega su un messaggio normale, che arriva solo
 se il titolare ha scritto al bot nelle ultime 24 ore.
 
+> **In fase di test** imposta `TITOLARE_WA_ID=393297751951` (il numero di
+> test), così le notifiche del titolare le vedi tu. ⚠️ Con il numero di
+> prova di Meta questo numero **deve** essere anche tra i destinatari di
+> prova (§5.2), altrimenti le notifiche non partono. Al go-live sostituisci
+> con il numero vero del Dott. Conti.
+
 ## 6 · Google Sheets e Google Calendar
 
 ### 6.1 Progetto Google Cloud
@@ -280,7 +295,13 @@ il titolare preferisce un altro tono.
 
 ## 8 · Collaudo
 
-Con il workflow attivo, dal tuo telefono scrivi al numero del bot:
+⚠️ In fase di test il numero di prova di Meta risponde **solo ai numeri
+registrati come destinatari** (§5.2): verifica che **+39 329 7751951** e il
+numero in `TITOLARE_WA_ID` siano nella lista. Se qualcosa non arriva, la
+causa quasi sempre è un numero non whitelistato.
+
+Con il workflow attivo, dal telefono di test **+39 329 7751951** scrivi al
+numero di prova del bot:
 
 - [ ] «Ciao» → arriva il menu con le 4 voci.
 - [ ] **Orari e contatti** → arrivano orari, indirizzo, telefono.

@@ -153,27 +153,30 @@ container con le nuove variabili).
 
 ### 5.2 Numero di telefono
 
-**Fase di test (adesso).** In **WhatsApp → API Setup** Meta assegna in
-automatico un **numero di prova** come *mittente* del bot (non si può
-scegliere): è il numero a cui scriveranno i tester. In modalità di prova
-il bot può però rispondere **solo ai numeri registrati come destinatari**
-(max 5). Registra qui il numero di test concordato **+39 329 7751951**:
-in **API Setup → riquadro "To" → Manage phone number list → Add phone
-number**, poi conferma col codice che Meta invia via WhatsApp/SMS.
-Aggiungi allo stesso modo ogni altro telefono che userai per provare
-(incluso quello impostato in `TITOLARE_WA_ID`, vedi §5.6).
+Il **numero del bot** è **+39 329 7751951**, già **registrato e
+verificato** nella Cloud API (WhatsApp → API Setup). È un numero **reale
+tuo**, non il numero-sandbox di Meta: quindi **non** c'è la lista dei 5
+destinatari di prova. Chiunque può scrivere al bot da un telefono
+qualunque e ricevere risposta (finestra di servizio di 24 ore). Per la
+demo scrivi tu al bot dal tuo telefono, oppure fallo da quello di un
+cliente.
 
-> In questa fase **non** tocchiamo il numero reale 327 3615213: resta sul
-> sito e si migra solo al go-live.
+In **WhatsApp → API Setup** seleziona questo numero e copia il suo
+**Phone number ID** (un numero lungo) in `META_PHONE_NUMBER_ID` nel
+`.env`. (Attenzione: il *Phone number ID* non è il numero di telefono.)
 
-**Go-live (più avanti).** Aggiungi il numero vero **327 3615213** da
-**WhatsApp → Phone numbers → Add phone number** (verifica via SMS/chiamata;
-vedi l'avvertenza sulla migrazione al punto 1). Imposta il display name
-«ArilùFarma» — Meta lo deve approvare. A quel punto i destinatari di prova
-non servono più: il bot può rispondere a chiunque scriva.
+> **Nota sulle notifiche al titolare e sui promemoria.** Questi sono
+> messaggi *avviati dal bot*: fuori dalla finestra di 24 ore richiedono un
+> **template approvato** (`notifica_arilufarma`, `promemoria_arilufarma`,
+> vedi §5.6 e §12). In demo, il modo più semplice è che il titolare
+> scriva una volta al bot, così rientra nelle 24 ore.
 
-Copia l'**ID del numero di telefono** (Phone number ID, un numero lungo)
-in `META_PHONE_NUMBER_ID` nel `.env`.
+**Go-live (più avanti).** Se al lancio vorrai usare il numero storico
+**327 3615213** (quello sul sito) al posto del 329, lo aggiungerai da
+**WhatsApp → Phone numbers → Add phone number** con display name
+«ArilùFarma». ⚠️ Se quel numero è in uso con l'app *WhatsApp Business*,
+registrandolo sulla Cloud API viene scollegato dall'app (vedi punto 1).
+Decisione da prendere col titolare; per ora la demo gira sul 329.
 
 ### 5.3 Token permanente (non quello di 24 ore!)
 
@@ -298,13 +301,9 @@ il titolare preferisce un altro tono.
 
 ## 8 · Collaudo
 
-⚠️ In fase di test il numero di prova di Meta risponde **solo ai numeri
-registrati come destinatari** (§5.2): verifica che **+39 329 7751951** e il
-numero in `TITOLARE_WA_ID` siano nella lista. Se qualcosa non arriva, la
-causa quasi sempre è un numero non whitelistato.
-
-Con il workflow attivo, dal telefono di test **+39 329 7751951** scrivi al
-numero di prova del bot:
+Il numero del bot è **+39 329 7751951**. Con il workflow attivo, scrivi
+**al bot** da un telefono qualsiasi — il tuo, o quello di un cliente per
+mostrare come funziona:
 
 - [ ] «Ciao» → arriva il menu con le 4 voci.
 - [ ] **Orari e contatti** → arrivano orari, indirizzo, telefono.
@@ -319,6 +318,12 @@ numero di prova del bot:
       finché non scrivi «menu».
 - [ ] Scrivi una frase a caso → il bot ripropone il menu.
 - [ ] Ogni messaggio compare nella scheda `Messaggi`.
+
+> Le **notifiche al titolare** sono avviate dal bot: se il titolare non ha
+> scritto al bot nelle ultime 24 ore, arrivano solo con il template
+> `notifica_arilufarma` approvato. Per il collaudo, la via più semplice è
+> impostare `TITOLARE_WA_ID` sul tuo numero e scrivere una volta al bot da
+> quel telefono, così rientri nella finestra di 24 ore.
 
 In caso di problemi: in n8n apri **Executions** e guarda l'esecuzione
 fallita (mostra nodo per nodo dati e errore).

@@ -34,7 +34,7 @@ con lo strumento *Consulta_listino*.
 | Noleggio tiralatte | da definire | servizio di noleggio |
 | Consulenza | da definire | col Dott. Conti |
 
-## Scheda `Prodotti` (da banco — prezzi reali dal sito)
+## Scheda `Prodotti` (da banco)
 
 | nome | categoria | prezzo | note |
 |------|-----------|--------|------|
@@ -44,6 +44,38 @@ con lo strumento *Consulta_listino*.
 | Crema Caudalie | Viso | €14,90 | idratante con polifenoli d'uva |
 | Listerine 500ml | Igiene orale | €3,90 | collutorio per pulizia profonda |
 | Normolip | Colesterolo | €32,90 | integratore naturale con monacolina K |
+| Aspirina | Dolore e febbre | da definire | analgesico e antinfiammatorio |
+| Moment | Dolore e infiammazione | da definire | antinfiammatorio (ibuprofene) |
+| Moment Act | Dolore e infiammazione | da definire | ibuprofene arginina, azione rapida |
+| Tachipirina | Dolore e febbre | da definire | analgesico e antipiretico (paracetamolo) |
+| Gaviscon | Reflusso e bruciore | da definire | protezione contro reflusso gastroesofageo |
+| Maalox | Acidità di stomaco | da definire | antiacido per bruciore e acidità |
+| Buscopan | Dolori addominali | da definire | antispastico per crampi addominali |
+| Imodium | Intestino | da definire | antidiarroico |
+| Enterogermina | Intestino | da definire | fermenti lattici per la flora intestinale |
+| Rinazina | Naso | da definire | decongestionante nasale spray |
+| Fluimucil | Tosse e catarro | da definire | mucolitico |
+| Aerius | Allergie | da definire | antistaminico |
+
+> Prezzi reali per gli articoli già venduti sul sito attuale; per i nuovi OTC
+> classici da banco (aspirina, Moment, Gaviscon, ecc.) il prezzo è "da
+> definire" finché il Dott. Conti non lo conferma — stesso guardrail delle
+> altre schede: il bot non lo inventa mai, rimanda alla sede o al telefono.
+
+### Marche in vetrina (marquee del sito)
+
+Le marche che scorrono in home (oltre a quelle già presenti come prodotto
+sopra, es. Caudalie) sono disponibili in negozio ma senza un prodotto/prezzo
+specifico indicato: il bot le tratta come "marca disponibile, listino da
+confermare in sede", mai con un prezzo inventato.
+
+| nome | categoria | prezzo | note |
+|------|-----------|--------|------|
+| ISDIN | Marca — solari e dermocosmesi | da definire | linea disponibile in negozio |
+| EuPhidra | Marca — dermocosmesi e igiene | da definire | linea disponibile in negozio |
+| Heliocare | Marca — fotoprotezione | da definire | linea solare disponibile in negozio |
+| Curasept | Marca — igiene orale | da definire | linea disponibile in negozio |
+| Rilastil | Marca — dermocosmesi | da definire | linea disponibile in negozio |
 
 > Prodotti delle migliori marche, disponibili in negozio fino a esaurimento
 > scorte. Elenco da ampliare col catalogo reale (Winfarm).

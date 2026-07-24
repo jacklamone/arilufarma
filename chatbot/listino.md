@@ -64,13 +64,13 @@ con lo strumento *Consulta_listino*.
 
 ### Marche in vetrina (marquee del sito)
 
-Le marche che scorrono in home (oltre a quelle già presenti come prodotto
-sopra, es. Caudalie) sono disponibili in negozio ma senza un prodotto/prezzo
-specifico indicato: il bot le tratta come "marca disponibile, listino da
-confermare in sede", mai con un prezzo inventato.
+Le marche che scorrono in home sono disponibili in negozio ma senza un
+prodotto/prezzo specifico indicato: il bot le tratta come "marca
+disponibile, listino da confermare in sede", mai con un prezzo inventato.
 
 | nome | categoria | prezzo | note |
 |------|-----------|--------|------|
+| Caudalie | Marca di punta — viso e cosmesi | da definire | marca di punta della parafarmacia (vedi anche Crema Caudalie tra i prodotti) |
 | ISDIN | Marca — solari e dermocosmesi | da definire | linea disponibile in negozio |
 | EuPhidra | Marca — dermocosmesi e igiene | da definire | linea disponibile in negozio |
 | Heliocare | Marca — fotoprotezione | da definire | linea solare disponibile in negozio |

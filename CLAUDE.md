@@ -28,18 +28,26 @@ assets/oro/img/     Immagini prodotti e categorie
 - **Marquee marche**: scorrimento gestito in JS, trascinabile col dito,
   riparte da solo dopo ~1,2s. Non tornare all'animazione CSS con :hover
   (su iOS si bloccava per sempre).
-- **Assistente virtuale WhatsApp** (sezione `#assistente`): chatbot in
-  sviluppo da parte del titolare del progetto, collegato a un gestionale
-  e a Google Calendar. Numero WhatsApp: 327 3615213. Il sito ne parla al
-  presente perché sito e bot vanno live insieme.
+- **Assistente virtuale WhatsApp** (sezione `#assistente`): chatbot
+  funzionante (Meta Cloud API + n8n), collegato al gestionale Google
+  Sheets e a Google Calendar — gestisce info, prenotazioni, richieste
+  galeniche, ritiri, cancellazioni, promemoria automatici e listino
+  prezzi/offerte. Il sito (ancora in test, non pubblicato) rimanda al
+  numero di test del bot, **+39 329 7751951**. Il numero definitivo
+  della farmacia, **327 3615213** (già in uso sul sito istituzionale
+  attuale), sostituirà quello di test in tutte le CTA solo al lancio
+  ufficiale del nuovo sito — non anticiparlo prima che il titolare lo
+  confermi.
 - **Chatbot** (`chatbot/`): kit del bot WhatsApp — Meta Cloud API +
   n8n self-hosted su VPS Contabo + Google Sheets (gestionale) + Google
   Calendar. Guida in `chatbot/README.md`, workflow importabile in
   `chatbot/n8n/`. Nessun segreto nel repo: il `.env` vive solo sul VPS.
   La cartella non fa parte del sito, ma su `main` verrebbe pubblicata
   da Netlify come file statici (innocuo, niente credenziali).
-- **Contatti**: tutte le CTA aprono WhatsApp (wa.me/393273615213).
-  Tel: 079 278245 · Email: clienti@parafarmaciasassari.it
+- **Contatti**: tutte le CTA aprono il Chatbot su WhatsApp
+  (wa.me/393297751951, numero di test — vedi nota sopra). La riga
+  "Telefono" mostra solo il fisso 079 278245 (il numero del bot non è
+  pensato per chiamate vocali). Email: clienti@parafarmaciasassari.it ·
   Indirizzo: Via Silvio Vardabasso 1/a, Sassari.
 - **Intro/loader**: dura 3s + 2s di dissolvenza (già accorciata: non
   allungarla di nuovo).

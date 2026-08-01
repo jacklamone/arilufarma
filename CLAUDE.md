@@ -2,7 +2,8 @@
 
 Sito di **ArilùFarma**, parafarmacia galenica a Sassari (Dott. Luca Conti,
 dal 2011). Cliente dell'agenzia Intellecta Solutions. Demo pubblicata su
-**ariludemo.netlify.app** (account Netlify "contigiacomo", piano a crediti).
+**arilufarma.netlify.app**, su un account Netlify dedicato solo a questo
+cliente (piano Free, crediti suoi).
 
 ## Regole fondamentali
 
@@ -12,7 +13,14 @@ dal 2011). Cliente dell'agenzia Intellecta Solutions. Demo pubblicata su
 - **Niente framework**: HTML/CSS/JS statici in un unico `index.html`
   (stili e script inline), più `privacy.html` e `cookie.html`.
 - Se l'account Netlify esaurisce i crediti i deploy vengono "Skipped":
-  si sbloccano da soli al rinnovo mensile.
+  si sbloccano da soli al rinnovo mensile. È successo col vecchio account
+  "contigiacomo", dove il sito conviveva con altri progetti che avevano
+  consumato i crediti del ciclo — da qui l'account dedicato. Il vecchio
+  progetto `ariludemo` non va più usato: serve ancora una versione
+  sorpassata del sito.
+- **Il pulsante privacy del Chatbot** (nodo `Invia_informativa_privacy` su
+  n8n) punta a `arilufarma.netlify.app/privacy.html`: se il sito cambia
+  indirizzo va aggiornato lì, altrimenti il cliente atterra sul nulla.
 
 ## Struttura e caratteristiche
 

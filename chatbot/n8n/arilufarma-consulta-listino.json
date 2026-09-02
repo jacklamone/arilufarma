@@ -1,0 +1,121 @@
+{
+  "name": "ArilùFarma · Consulta listino",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "workflowInputs",
+        "workflowInputs": {
+          "values": [
+            { "name": "Query", "type": "string" },
+            { "name": "Foglio", "type": "string" }
+          ]
+        }
+      },
+      "id": "5071bd66-f8cb-4d3b-a526-4a9ad1702b53",
+      "name": "Richiesta ricevuta",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0"
+        },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Prodotti" },
+        "options": {}
+      },
+      "id": "6e5b79a5-1e92-4837-b9a6-a37db8cec12e",
+      "name": "Leggi Prodotti",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [224, 0],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0"
+        },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Galenici" },
+        "options": {}
+      },
+      "id": "cb6c6479-df59-4601-895c-4bb3fa12da4e",
+      "name": "Leggi Galenici",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [448, 0],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0"
+        },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Servizi" },
+        "options": {}
+      },
+      "id": "b40431a5-3be5-4365-8121-2f2067336900",
+      "name": "Leggi Servizi",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [672, 0],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0"
+        },
+        "sheetName": { "__rl": true, "mode": "name", "value": "Offerte" },
+        "options": {}
+      },
+      "id": "4261d5c6-ca91-4ca4-9d2e-3b347d026c5e",
+      "name": "Leggi Offerte",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [896, 0],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const req = $('Richiesta ricevuta').first().json || {};\nconst q = String(req.Query || '').trim().toLowerCase();\nconst foglioRaw = String(req.Foglio || '').trim().toLowerCase();\nconst wanted = foglioRaw ? foglioRaw.split(/[,;|/]+/).map(s => s.trim()).filter(Boolean) : ['prodotti', 'galenici', 'servizi', 'offerte'];\nfunction norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, ''); }\nconst nq = norm(q);\nconst tokens = nq.split(/[^a-z0-9]+/).filter(t => t.length >= 3);\nfunction score(row) {\n  const blob = norm(Object.values(row).join(' '));\n  if (!nq) return 1;\n  if (blob === nq) return 100;\n  if (blob.includes(nq) || nq.includes(blob)) return 80;\n  let hits = 0;\n  for (const t of tokens) if (blob.includes(t)) hits++;\n  if (!hits) return 0;\n  return 20 + hits * 15;\n}\nfunction pack(foglio, rows, nameKeys) {\n  if (!wanted.some(w => foglio.toLowerCase().startsWith(w.slice(0, 4)))) return [];\n  return rows.map(r => {\n    const nome = nameKeys.map(k => r[k]).find(Boolean) || '';\n    const s = score({ nome, ...r });\n    if (s <= 0) return null;\n    const out = { foglio: foglio, nome: String(nome), punteggio: s };\n    if (r.categoria) out.categoria = r.categoria;\n    if (r.prezzo) out.prezzo = r.prezzo;\n    if (r.prezzo_sconto) out.prezzo = r.prezzo_sconto;\n    if (r.note) out.note = r.note;\n    if (r.descrizione) out.descrizione = r.descrizione;\n    if (r.valido_fino) out.valido_fino = r.valido_fino;\n    return out;\n  }).filter(Boolean);\n}\nconst hits = [\n  ...pack('Prodotti', $('Leggi Prodotti').all().map(i => i.json), ['nome']),\n  ...pack('Galenici', $('Leggi Galenici').all().map(i => i.json), ['nome']),\n  ...pack('Servizi', $('Leggi Servizi').all().map(i => i.json), ['servizio', 'nome']),\n  ...pack('Offerte', $('Leggi Offerte').all().map(i => i.json), ['titolo', 'nome']),\n].sort((a, b) => b.punteggio - a.punteggio).slice(0, 8);\nconst risultati = hits.map(({ punteggio, ...rest }) => rest);\nreturn [{ json: { query: q, fogli: wanted, trovati: risultati.length, risultati: risultati, nota: risultati.length ? 'Usa SOLO queste righe. Non inventare prezzi. Se prezzo e da definire, dillo cosi.' : 'Nessuna riga pertinente. Non inventare prodotti o prezzi. Invita a chiamare lo 079 278245.' } }];"
+      },
+      "id": "b92b05a3-fb6a-495a-a5ef-13a64080d793",
+      "name": "Filtra corrispondenze",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 0]
+    }
+  ],
+  "connections": {
+    "Richiesta ricevuta": { "main": [[{"node": "Leggi Prodotti", "type": "main", "index": 0}]] },
+    "Leggi Prodotti": { "main": [[{"node": "Leggi Galenici", "type": "main", "index": 0}]] },
+    "Leggi Galenici": { "main": [[{"node": "Leggi Servizi", "type": "main", "index": 0}]] },
+    "Leggi Servizi": { "main": [[{"node": "Leggi Offerte", "type": "main", "index": 0}]] },
+    "Leggi Offerte": { "main": [[{"node": "Filtra corrispondenze", "type": "main", "index": 0}]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

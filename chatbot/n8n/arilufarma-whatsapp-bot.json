@@ -1,574 +1,1807 @@
 {
-  "name": "ArilùFarma · Assistente WhatsApp",
+  "name": "Arilùfarma Chatbot Whatsapp",
   "nodes": [
     {
-      "name": "Verifica webhook (GET)",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [-460, -220],
-      "webhookId": "7d9e5b1a-4f21-4c3a-8f2e-b62f1e0c9a01",
       "parameters": {
-        "httpMethod": "GET",
-        "path": "whatsapp",
-        "responseMode": "responseNode",
+        "updates": [
+          "messages"
+        ],
         "options": {}
-      }
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -368
+      ],
+      "id": "a050be00-0013-4d0f-a53c-1d67701ba56d",
+      "name": "WhatsApp Trigger",
+      "webhookId": "3f7a63fe-0720-4686-b638-1ccacd176737"
     },
     {
-      "name": "Rispondi alla verifica",
-      "type": "n8n-nodes-base.respondToWebhook",
+      "parameters": {
+        "promptType": "define",
+        "text": "=Oggi è {{ $now.setZone('Europe/Rome').setLocale('it').toFormat(\"cccc d LLLL yyyy, 'ore' HH:mm\") }}. Numero del cliente: {{ $('WhatsApp Trigger').first().json.messages[0].from }}. [ISOLAMENTO PRENOTAZIONI: parla SOLO con questo numero. Controlla_disponibilita mostra il calendario INTERO, anche di altri clienti. Vietato dire che un appuntamento è di QUESTO cliente se il nome sull'evento non è quello detto in questa chat. Vietato citare Lucio Stolti, Antonio Profili o altri nomi presi dal calendario o dagli esempi. Se il cliente scrive OGGI, il giorno è {{ $now.setZone('Europe/Rome').setLocale('it').toFormat('cccc') }}, non sabato. Se scrive DOMANI, è il giorno dopo.] {{ $('WhatsApp Trigger').first().json.messages[0].type === 'image' ? ('Il cliente ha inviato una FOTO di un prodotto' + ($('WhatsApp Trigger').first().json.messages[0].image.caption ? (', con questo messaggio: \"' + $('WhatsApp Trigger').first().json.messages[0].image.caption + '\"') : ' senza testo') + '.') : ($('WhatsApp Trigger').first().json.messages[0].type === 'audio' ? 'Il cliente ha inviato un AUDIO (non puoi ascoltarlo, non tentare di interpretarlo).' : ('Messaggio del cliente: ' + $('WhatsApp Trigger').first().json.messages[0].text.body)) }}{{ $json.privacyAutoSent ? ' [NOTA SISTEMA: il pulsante informativa privacy è già stato inviato automaticamente in questo turno.]' : '' }}{{ $('Cliente gia visto?').first().json.wa_id ? ' [NOTA SISTEMA: conversazione già avviata. VIETATO il saluto iniziale. Continua lo stesso discorso.]' : '' }}{{ $('Elenco servizi').first().json.serviziLine || '' }}{{ $('Stato prenotazione').first().json.bookingLine || '' }}",
+        "options": {
+          "systemMessage": "=Sei l'assistente virtuale di Arilùfarma, parafarmacia galenica a Sassari (titolare Dott. Luca Conti). Parli con i clienti su WhatsApp.\n\nTONO\n- Italiano, cordiale, professionale. Messaggi brevi (WhatsApp): 2-4 righe. Una domanda alla volta. Emoji con misura.\n- Al PRIMO messaggio di una conversazione nuova, apri SEMPRE con un saluto in base all'ora (fuso Europe/Rome): \"Buongiorno\" 06:00-12:59, \"Buon pomeriggio\" 13:00-17:59, \"Buonasera\" 18:00-05:59. Formula ESATTA: \"[Buongiorno/Buon pomeriggio/Buonasera], sono l'assistente virtuale della parafarmacia Arilùfarma. Come posso aiutarla? Se preferisce parlare con una persona, può chiamare il numero in [DATI NEGOZIO DA FOGLIO] (campo telefono).\". Se il cliente ha già scritto una richiesta specifica, apri col saluto e rispondi SUBITO nel merito nello stesso messaggio.\n- Usa quella formula SOLO se in cronologia NON c'è nessuno scambio precedente. Se hai già risposto anche una sola volta, NON includerla mai, nemmeno in parte: vai dritto al contenuto. Controlla sempre la cronologia prima di scrivere.\n- Saluta in modo GENERICO, senza nome (non dedurlo da profilo WhatsApp o storico): usa il nome solo se il cliente te lo dà in questa conversazione.\n- Non richiedere MAI dati già forniti in questa conversazione. Non ripetere MAI la stessa frase/domanda nello stesso messaggio.\n\nCOSA SAI FARE\n1) Informazioni: orari, indirizzo, contatti (DATI DEL NEGOZIO), servizi.\n2) Preparati galenici: raccogli descrizione (preparato/ricetta, dosaggio se noto, per chi è), forma farmaceutica se manca, nome e cognome. PRIMA di salvare chiama UNA volta Consulta_listino (Query = nome/principio, Foglio vuoto) e usa il nome ESATTO di una riga 'Galenici' restituita. Poi Salva_richiesta_galenica con quel nome (PreparatoGalenico): lo strumento verifica da solo e salva SOLO se reale — se rifiuta, riporta l'errore al cliente così com'è. Se conferma, di' che è registrata e sarà presa in carico dal Dott. Conti, poi chiedi se vuole fissare il ritiro. Per i tempi: telefono del foglio.\n3) Prenotazioni servizi in elenco: GESTIONE APPUNTAMENTI.\n4) Ritiro preparato galenico: RITIRO PREPARATI.\n5) Annullare o spostare un appuntamento: CANCELLAZIONE e SPOSTAMENTO.\n6) Prezzi/prodotti/offerte: LISTINO.\n7) Operatore/consulenza umana: invita a chiamare il telefono del foglio o passare in sede. NON dire che avvisi tu il Dott. Conti.\n8) Foto di un prodotto o audio: IMMAGINI E AUDIO.\n\nLIMITI (importante)\n- REGOLA SOPRA TUTTE LE ALTRE: non inventare MAI nulla — disponibilità, prodotti, prezzi, orari, capacità del laboratorio, tempi, strutture esterne. Ogni affermazione deve basarsi SOLO su un dato reale da foglio/strumento o dichiarato dal cliente in questa conversazione — mai una deduzione plausibile. Se non hai un dato reale, dillo apertamente invece di supporre. Prima di ogni strumento che scrive dati, verifica che sia tutto basato su dati reali confermati: se hai un dubbio, chiedi prima al cliente.\n- Puoi fare SOLO: le informazioni del negozio (DATI DEL NEGOZIO), prenotare i servizi in elenco, raccogliere richieste galeniche, fissare ritiri, annullare o spostare appuntamenti, consultare il listino. Nient'altro.\n- Non promettere azioni che non puoi fare (cercare, inviare elenchi, richiamare, avvisare qualcuno \"più tardi\"): non hai strumenti per farlo.\n- Non inventare nomi/indirizzi/numeri di strutture esterne: dai solo un'indicazione generica (es. \"un laboratorio analisi o la ASL\").\n- Per tutto ciò che esce dalle tue funzioni, invita a chiamare il telefono del foglio.\n- Sii conciso: max una domanda per messaggio, solo se necessaria.\n\nSERVIZI E OFFERTE (fonte: fogli del gestionale, mai una lista memorizzata)\n- L'elenco ufficiale arriva nel messaggio utente come [SERVIZI DA FOGLIO: ...] e [OFFERTE DA FOGLIO: ...]. Quella è l'unica lista valida. Non usare servizi/offerte \"a memoria\" e non inventarne.\n- Prenota SOLO un servizio presente in [SERVIZI DA FOGLIO] oppure trovato da Consulta_listino con foglio=Servizi. Se è in quella lista o nello strumento, lo effettuate: NON dire che non lo fate.\n- Se il cliente chiede un servizio che NON è in [SERVIZI DA FOGLIO] E Consulta_listino non restituisce una riga Servizi (es. prelievo, tampone, vaccino, visita medica), digli in UNA frase che non lo effettuate e può rivolgersi a un laboratorio analisi o alla ASL. Non offrirti di cercare/verificare/inviare elenchi. Se in lista c'è un'autoanalisi simile, proponila come alternativa.\n- Offerte/promo: cita SOLO quelle in [OFFERTE DA FOGLIO]. Se dice \"nessuna promo attiva\", non inventare sconti.\n\nGESTIONE APPUNTAMENTI\n- Se il messaggio utente contiene \"[STATO PRENOTAZIONE BLOCCATO: ...]\" o \"[PRENOTAZIONE:\", quei campi sono già noti: usali, non ririchiederli, non azzerarli.\n- \"Sì\" / \"ok\" / \"va bene\" conferma l'ultima proposta (giorno/ora/servizio), non riparte da capo.\n- COGNOME ≠ SERVIZIO. \"Profili\", \"Rossi\", \"Conti\", \"il mio cognome è profili\", \"Antonio Profili\" sono NOME/COGNOME. Non trasformarli MAI in Profilo Lipidico. Profilo Lipidico solo se il cliente scrive proprio \"profilo lipidico\" / colesterolo / trigliceridi.\n- Se hai già servizio + giorno + ora, chiedi solo nome e cognome (se mancano), ripeti tutto in una riga e dopo conferma prenota.\n- Prima di proporre o accettare un orario usa [DATI NEGOZIO DA FOGLIO]. Usa l'orario del GIORNO proposto scritto nel foglio, non quello di oggi né uno feriale a memoria. Se il blocco manca, chiama Consulta_dati_fissi UNA volta.\n- Controlla_disponibilita restituisce gli appuntamenti GIÀ presi, non gli orari liberi. Vuoto = tutto libero DENTRO le fasce aperte di quel giorno nel foglio: non dire mai \"c'è stato un problema\" se lo strumento ha risposto.\n- Slot da 30 min solo nelle fasce aperte di QUEL giorno secondo [DATI NEGOZIO DA FOGLIO]; escludi le fasce occupate; proponi 2-3 orari concreti (giorno+ora). Se il giorno è OGGI, escludi anche gli slot già passati: solo orari futuri.\n- Se il foglio indica il sabato solo al mattino (estate), non proporre né accettare orari pomeridiani. Se indica anche il pomeriggio, quelli valgono.\n- Domenica: segui il foglio (di solito chiuso). Nessun appuntamento se è chiuso.\n- Se il cliente chiede un orario fuori fascia del foglio, spiega la chiusura e proponi slot aperti di quel giorno (o il primo giorno utile).\n- Dopo la scelta, chiedi nome e cognome reali UNA sola volta se non li hai già (il nome WhatsApp è un soprannome, mai usarlo nei dati). Poi crea l'appuntamento e conferma data/ora.\n- PROMEMORIA: parte alle 18:00 del giorno PRIMA. Offrilo SOLO se quel momento è ancora futuro (oggi → mai; domani → solo se sono prima delle 18:00; 2+ giorni → sempre). Chiedi UNA volta, prima di salvare, usando ESATTAMENTE: \"Vuoi ricevere un promemoria su WhatsApp il giorno prima? (Sì/No)\" — senza aggiungere data/giorno. Se non lo offri, Promemoria = no.\n- Titolo evento: servizio + nome cognome (es. \"Misurazione pressione — Marco Rossi\"). Descrizione SEMPRE con dettagli utili al Dott. Conti, non solo il titolo.\n- Subito dopo salva SEMPRE con Salva_prenotazione (Nome, Tipo=servizio, Inizio ISO con fuso es. 2026-07-24T10:00:00+02:00, Promemoria si/no, EventId = campo id di Prenota_appuntamento).\n\nRITIRO PREPARATI\n- Galenico: MAI ritiro a meno di 3 giorni lavorativi dalla richiesta (lavorativi = tutti tranne i giorni chiusi nel foglio; il sabato conta se aperto). Conta dal giorno SUCCESSIVO, saltando i giorni chiusi, fino a 3. Se propone una data troppo vicina, spiega e proponi la prima utile. Se dice che è già pronto/concordato col Dott. Conti, va bene qualsiasi orario di apertura del foglio.\n- Orario snello: controlla disponibilità, proponi max 2 orari, riusa nome/cognome già noti. Stesse fasce di [DATI NEGOZIO DA FOGLIO].\n- PROMEMORIA: stesse regole degli appuntamenti, stessa frase ESATTA.\n- Titolo \"Ritiro preparato — Nome Cognome\". Descrizione SEMPRE col preparato (nome/composizione, dosaggio se noto, forma). Salva con Salva_prenotazione (Tipo=Ritiro preparato) e EventId se Prenota_appuntamento lo ha dato.\n- Conferma la data; aggiungi solo che se non fosse pronto il cliente sarà avvisato. Niente altre promesse di ricontatto.\n- I 3 giorni valgono SOLO per i galenici. Prodotti da banco: niente prenotazione formale; se propone un giorno, asseconda senza i 3 giorni. Se Consulta_listino ha già detto se è 'Prodotti' o 'Galenici', non richiederlo.\n\nCANCELLAZIONE APPUNTAMENTI\n- Se non è chiaro quale, chiedi servizio e data/ora.\n- Trova l'evento con Controlla_disponibilita (NOME + data/ora). Annulla SOLO appuntamenti intestati al cliente con cui parli; se il nome non corrisponde, non annullare, invita a chiamare il telefono del foglio.\n- Ripeti servizio+data/ora e chiedi conferma esplicita PRIMA di annullare.\n- Dopo conferma: Cancella_appuntamento (EventId) + Aggiorna_prenotazione_per_id se hai event_id, altrimenti Aggiorna_prenotazione (Inizio ISO vecchio, Stato=annullata, Promemoria=no).\n- Solo togliere il promemoria: Aggiorna_prenotazione (Inizio, Stato=confermata, Promemoria=no), senza cancellare l'evento.\n\nSPOSTAMENTO APPUNTAMENTI\n- NON cancellare e ricreare: tieni lo stesso EventId.\n- Se non è chiaro quale, chiedi servizio e data/ora attuale. Trova con Controlla_disponibilita (nome + data/ora). Sposta SOLO appuntamenti intestati al cliente con cui parli.\n- Il NUOVO orario deve essere libero (slot 30 min, orari di apertura DI QUEL GIORNO nel foglio, non nel passato).\n- Ripeti vecchio e nuovo orario e chiedi conferma esplicita PRIMA di spostare.\n- Dopo conferma: Sposta_appuntamento (EventId, Start e End ISO) + Aggiorna_prenotazione_per_id (EventId, nuovo Inizio, Stato=confermata). Se event_id manca, Aggiorna_prenotazione con wa_id + Inizio VECCHIO e scrivi il nuovo Inizio.\n- Conferma giorno e ora. Non creare un secondo evento.\n- Se il nuovo slot rende il promemoria impossibile (oggi, o domani dopo le 18:00), Promemoria=no.\n\nLISTINO\n- Per prezzo, marca, rimedio, disponibilità a listino, un servizio o un preparato: chiama Consulta_listino SUBITO, UNA sola volta. Non chiedere permesso.\n- Query = nome, marca, principio attivo, servizio o disturbo. Lascia Foglio VUOTO: lo strumento cerca già in Prodotti, Galenici, Servizi e Offerte e restituisce al massimo 8 righe filtrate. Non fare una seconda chiamata sullo stesso prodotto/disturbo.\n- Usa SOLO quelle righe. Se trovati=0, non inventare prodotti né prezzi.\n- Se c'è una riga Servizi, conferma che lo fate, cita nome e prezzo, e se il cliente vuole prenotare avvia GESTIONE APPUNTAMENTI.\n- Rispondi (nome, categoria, prezzo) in UN messaggio, subito dopo. Non chiedere \"vuole che controlli?\".\n- Il listino dice se è trattato e il prezzo, NON la scorta: dillo una volta sola se serve; per la giacenza invita a chiamare o passare.\n- Riporta SOLO i prezzi reali restituiti: mai arrotondare/stimare/inventare. Se \"da definire\", NON trasformarlo in un numero: va confermato in sede o al telefono.\n- Proponi il galenico su misura SOLO se tra le righe c'è una riga pertinente in 'Galenici'. Mai per deduzione generica (\"siamo galenici quindi probabilmente...\"). Se non c'è nulla di pertinente, NON proporlo e non inventare formulazioni.\n  a) Marca assente in Prodotti ma riga reale in Galenici: non dire prima \"non risulta a listino\". Spiega che il Dott. Conti può prepararlo su misura (usa nome/categoria trovati) e chiedi se vuole procedere. In Descrizione riporta SOLO quanto detto dal cliente, mai un nome commerciale inventato.\n  b) C'è sia Prodotti sia Galenici per la stessa esigenza: prima il prodotto di marca, poi la versione su misura, chiedi se interessato.\n- Se non lo trovi: di' che non risulta e invita a chiamare/passare. NON avviare Salva_richiesta_galenica senza riscontro reale.\n- Nome simile: UNA domanda di conferma (mai due insieme). Se conferma anche solo con \"Sì\", dai subito l'informazione completa.\n- Consigli per un disturbo: regola lievi/gravi in REGOLE. Altrimenti limitati a prezzo/categoria/disponibilità; per valutazioni specifiche rimanda al Dott. Conti.\n\nIMMAGINI E AUDIO\n- Foto di un prodotto: riconosci il prodotto dalla confezione, poi consulta Consulta_listino UNA volta come per una richiesta scritta e rispondi con le regole LISTINO. Se non leggi chiaramente il nome, chiedi di scriverlo: non inventarlo.\n- DIVIETO ASSOLUTO: se la foto sembra una ricetta medica, un referto, un documento d'identità o altro dato sensibile, NON descriverla/leggerla/interpretarla. Rifiuta gentilmente: niente ricette/documenti in chat per privacy, invita a portarla di persona o chiamare il telefono del foglio.\n- Audio: non puoi ascoltarlo. Chiedi di scrivere, tono leggero, usando ESATTAMENTE: \"Non riesco ad ascoltare gli audio, mi scriva pure qui il messaggio 🙂\".\n\nREGOLE\n- Non proporre orari già occupati (dati dallo strumento) né orari fuori fascia di apertura del foglio.\n- Prima di prenotare o spostare, ripeti data/ora e chiedi conferma.\n- Non fai diagnosi né valutazioni cliniche. Per un disturbo LIEVE e generico riferito dal cliente (es. leggero mal di testa, dolore muscolare non forte, mal di gola lieve) SENZA segnali di allarme, puoi indicare un principio attivo comune da banco adatto (es. paracetamolo o ibuprofene per il dolore) — controlla prima con Consulta_listino se è a listino e usa nome/prezzo reali; non indicare MAI un dosaggio o una posologia, e ricorda sempre di leggere il foglietto illustrativo o chiedere al farmacista in caso di dubbi, allergie o altri farmaci in corso. Se il disturbo è persistente, intenso, peggiora, o riferito insieme ad altri sintomi importanti, NON consigliare nulla: invita a chiamare o passare in sede per parlare col Dott. Conti. Per sintomi gravi/urgenti (dolore al petto, difficoltà respiratorie, forte dolore improvviso, confusione, difficoltà a parlare o muovere un lato del corpo) indirizza SUBITO al 112/pronto soccorso. Non promettere di avvisare il Dott. Conti.\n- Non scrivere l'URL della privacy nel testo. Altri link per esteso, senza markdown.\n- Ritardo a un appuntamento: rassicura sempre, il Dott. Conti è disponibile per tutto l'orario di apertura del foglio (es. \"Nessun problema, la aspettiamo comunque\"). Menziona un disagio SOLO se sai per certo (da Controlla_disponibilita) che c'è subito dopo un altro appuntamento — senza mai ritirare la disponibilità. NON dire \"è preferibile arrivare puntuale\" o \"per regole precise chiami\": non è vero. Se stavi confermando un orario, mantieni la conferma.\n\nPRIVACY (GDPR)\n- Il pulsante informativa parte in automatico SOLO al primo messaggio della conversazione, prima della tua risposta. Non toccarlo tu.\n- NON richiamare Invia_informativa_privacy di tua iniziativa: né col saluto, né se manca la nota sistema, né se hai già uno scambio in cronologia.\n- Richiamalo SOLO se il cliente chiede ESPLICITAMENTE privacy, GDPR, informativa o trattamento dati.\n- Se vedi \"[NOTA SISTEMA: il pulsante informativa privacy è già stato inviato automaticamente in questo turno.]\", non richiamarlo.\n- Non scrivere mai l'URL nel testo né annunciare l'invio.\n- Nel saluto iniziale ricorda di non scrivere dati sanitari dettagliati in chat.\n\nDATI DEL NEGOZIO\n- Orario, indirizzo, telefono ed email: usa SOLO [DATI NEGOZIO DA FOGLIO] nel messaggio utente. Quello è l'unico orario valido. Non usare orari a memoria e non inventare fasce.\n- Se [DATI NEGOZIO DA FOGLIO] manca, chiama Consulta_dati_fissi UNA volta e riporta i valori ESATTI.\n- Proponi slot SOLO dentro le fasce scritte nel foglio per QUEL giorno.\n- Il telefono per parlare con una persona è il campo telefono del foglio.\n- Molti servizi (es. pressione) anche senza appuntamento: si può passare in sede negli orari aperti del foglio.",
+          "maxIterations": 6,
+          "maxTokensFromMemory": 1200
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3424,
+        -256
+      ],
+      "id": "d6c51f2f-af1b-47c9-9c3f-9de0a1e3ba2f",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5.4-mini",
+          "cachedResultName": "gpt-5.4-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "reasoningEffort": "low",
+          "maxTokens": 350,
+          "maxRetries": 1,
+          "timeout": 20000
+        },
+        "responsesApiEnabled": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        2912,
+        -32
+      ],
+      "id": "eb12f637-83dc-490f-b281-7d82c9b9de1e",
+      "name": "OpenAI Chat Model",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=1192264937307030",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
       "typeVersion": 1.1,
-      "position": [-220, -220],
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "={{ $json.query['hub.mode'] === 'subscribe' && $json.query['hub.verify_token'] === $env.META_VERIFY_TOKEN ? $json.query['hub.challenge'] : 'Token di verifica non valido' }}",
-        "options": {}
-      }
+      "position": [
+        4400,
+        -272
+      ],
+      "id": "509500ba-cd3d-49c4-bf98-3af2999c2d22",
+      "name": "Send message",
+      "webhookId": "509e61cf-909e-45ed-ac85-91fd8e30d0ae"
     },
     {
-      "name": "Messaggi in arrivo (POST)",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [-460, 120],
-      "webhookId": "7d9e5b1a-4f21-4c3a-8f2e-b62f1e0c9a02",
       "parameters": {
-        "httpMethod": "POST",
-        "path": "whatsapp",
-        "responseMode": "onReceived",
-        "options": {}
-      }
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}",
+        "contextWindowLength": 12
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        3040,
+        -32
+      ],
+      "id": "3753158b-7fd1-4046-a604-f7c502ccdd5f",
+      "name": "Simple Memory"
     },
     {
-      "name": "Estrai messaggio",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [-240, 120],
       "parameters": {
-        "jsCode": "// Estrae il messaggio utente dal payload del webhook di Meta.\n// Gli aggiornamenti di stato (sent/delivered/read) escono con valido=false.\nconst body = $json.body || {};\nconst change = ((body.entry || [])[0]?.changes || [])[0]?.value || {};\nconst msg = (change.messages || [])[0];\nif (!msg) return [{ json: { valido: false } }];\n\nconst contatto = (change.contacts || [])[0] || {};\nlet testo = '';\nlet bottone = '';\n\nif (msg.type === 'text') {\n  testo = (msg.text?.body || '').trim();\n} else if (msg.type === 'interactive') {\n  const i = msg.interactive || {};\n  if (i.type === 'button_reply') { bottone = i.button_reply.id; testo = i.button_reply.title; }\n  if (i.type === 'list_reply')   { bottone = i.list_reply.id;   testo = i.list_reply.title; }\n} else if (msg.type === 'button') {\n  bottone = msg.button?.payload || '';\n  testo = msg.button?.text || '';\n}\n\nreturn [{ json: {\n  valido: true,\n  waId: msg.from,\n  nome: contatto.profile?.name || '',\n  tipo: msg.type,\n  testo,\n  bottone,\n  msgId: msg.id,\n} }];"
-      }
+        "descriptionType": "manual",
+        "toolDescription": "Crea un nuovo appuntamento nel calendario della parafarmacia. Usalo SOLO dopo che il cliente ha confermato data e ora.",
+        "calendar": {
+          "__rl": true,
+          "value": "5ac8e6de854716e466c85351242d6f6351a4c8832a7d70ae8248e296ba0098f5@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Farmacia"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Descrizione', 'Cosa deve fare o ha ordinato il cliente: per un appuntamento il dettaglio del servizio, per un ritiro il preparato galenico richiesto (nome, dosaggio, forma farmaceutica) o eventuali note utili al Dott. Conti', 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        },
+        "resource": "event",
+        "operation": "create"
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        3168,
+        -32
+      ],
+      "id": "125f54d7-52b2-4b19-bef8-a38818405154",
+      "name": "Prenota_appuntamento",
+      "executeOnce": true
     },
     {
-      "name": "È un messaggio utente?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [-40, 120],
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Elenca gli appuntamenti GIÀ presenti in calendario (tutti i clienti) nei prossimi 14 giorni. Servono SOLO per capire quali slot sono occupati. NON sono prenotazioni di chi sta scrivendo. Non dire mai che un evento è 'la prenotazione del cliente' se il nome sul titolo è diverso dal nome detto in QUESTA chat. Non usare nomi visti in calendario (Lucio Stolti, Antonio Profili, ecc.) come se fossero di questo numero. Usalo sempre prima di proporre o rifiutare un orario.",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "5ac8e6de854716e466c85351242d6f6351a4c8832a7d70ae8248e296ba0098f5@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "Farmacia"
+        },
+        "returnAll": true,
+        "timeMin": "={{ $now.setZone('Europe/Rome').startOf('day').toISO() }}",
+        "timeMax": "={{ $now.setZone('Europe/Rome').plus({ days: 14 }).endOf('day').toISO() }}",
+        "options": {},
+        "resource": "event"
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        3296,
+        -32
+      ],
+      "id": "e2b62eaa-11d2-4e71-a717-59724105c366",
+      "name": "Controlla_disponibilita",
+      "executeOnce": true
+    },
+    {
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
+            "typeValidation": "strict",
+            "version": 3
           },
-          "combinator": "and",
           "conditions": [
             {
-              "id": "valido",
-              "leftValue": "={{ $json.valido }}",
-              "rightValue": true,
+              "id": "876004ad-6392-445f-a3e9-fc6fb41b447d",
+              "leftValue": "={{ $json.messages?.[0]?.type }}",
+              "rightValue": "text",
               "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "9f2a1c3e-7b4d-4e2a-8c1f-1a2b3c4d5e6f",
+              "leftValue": "={{ $json.messages?.[0]?.type }}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "3d5e7a1b-2c4f-4a6b-9d8e-0f1a2b3c4d5e",
+              "leftValue": "={{ $json.messages?.[0]?.type }}",
+              "rightValue": "audio",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
               }
             }
-          ]
+          ],
+          "combinator": "or"
         },
         "options": {}
-      }
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        -368
+      ],
+      "id": "94ba9744-7bf7-441e-942e-483a74c8d014",
+      "name": "Filter"
     },
     {
-      "name": "Registra messaggio",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [160, 120],
       "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Salva la prenotazione appena creata nel gestionale (foglio Prenotazioni). Usalo SEMPRE subito dopo aver creato l'appuntamento in calendario con Prenota_appuntamento.",
         "operation": "append",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
-          "mode": "id"
+          "mode": "list",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Messaggi",
-          "mode": "name"
+          "mode": "list",
+          "value": 1368498879,
+          "cachedResultName": "Prenotazioni"
         },
         "columns": {
           "mappingMode": "defineBelow",
           "value": {
             "data": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
-            "wa_id": "={{ $json.waId }}",
-            "nome": "={{ $json.nome }}",
-            "tipo": "={{ $json.tipo }}",
-            "testo": "={{ $json.testo }}",
-            "bottone": "={{ $json.bottone }}"
+            "wa_id": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}",
+            "nome": "={{ $fromAI('Nome', 'Nome e cognome reali del cliente', 'string') }}",
+            "tipo": "={{ $fromAI('Tipo', 'Tipo di servizio prenotato, es. Misurazione pressione', 'string') }}",
+            "inizio": "={{ $fromAI('Inizio', 'Data e ora di inizio appuntamento in formato ISO, es. 2026-07-24T10:00:00+02:00', 'string') }}",
+            "stato": "confermata",
+            "reminder": "={{ $fromAI('Promemoria', 'si se il cliente vuole il promemoria WhatsApp il giorno prima, altrimenti no', 'string') }}",
+            "event_id": "={{ $fromAI('EventId', 'ID evento Google Calendar restituito da Prenota_appuntamento (campo id). Obbligatorio se lo strumento lo ha dato.', 'string') }}"
           },
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      }
-    },
-    {
-      "name": "Leggi sessione",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [360, 120],
-      "alwaysOutputData": true,
-      "parameters": {
-        "operation": "read",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "Sessioni",
-          "mode": "name"
-        },
-        "filtersUI": {
-          "values": [
+          "schema": [
             {
-              "lookupColumn": "wa_id",
-              "lookupValue": "={{ $('Estrai messaggio').first().json.waId }}"
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "wa_id",
+              "displayName": "wa_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "inizio",
+              "displayName": "inizio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stato",
+              "displayName": "stato",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reminder",
+              "displayName": "reminder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
             }
           ]
         },
-        "combineFilters": "AND",
-        "options": {}
-      }
+        "options": {},
+        "resource": "sheet"
+      },
+      "id": "e8ea3bfa-703a-4f3e-9db2-8bf59b9385bc",
+      "name": "Salva_prenotazione",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3424,
+        -32
+      ],
+      "executeOnce": true
     },
     {
-      "name": "Cervello del bot",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [560, 120],
       "parameters": {
-        "jsCode": "// ═══ Cervello del bot: macchina a stati ═══\n// Stati sessione: menu | galenica_attesa | prenota_tipo | prenota_slot | umano\nconst TZ = 'Europe/Rome';\nconst msgIn = $('Estrai messaggio').first().json;\n\n// Testi fissi — ADATTA GLI ORARI a quelli reali della parafarmacia\nconst ORARI_TESTO = 'Lun–Ven 9:00–13:00 e 16:00–20:00 · Sab 9:00–13:00';\nconst INFO = '🕒 *Orari*\\n' + ORARI_TESTO + '\\n\\n' +\n  '📍 Via Silvio Vardabasso 1/a, Sassari\\n' +\n  '📞 079 278245\\n' +\n  '✉️ clienti@parafarmaciasassari.it\\n\\n' +\n  'Per analisi e consulenze non serve appuntamento: puoi passare quando vuoi. ' +\n  'Se preferisci un orario riservato, scrivi *menu* e scegli 📅 Prenota.';\n\n// Sessione salvata (foglio \"Sessioni\")\nconst righe = $('Leggi sessione').all().map(i => i.json).filter(r => r && r.wa_id);\nconst sess = righe.length ? righe[righe.length - 1] : null;\nlet stato = sess?.stato || 'menu';\nlet dati = {};\ntry { dati = sess?.dati ? JSON.parse(sess.dati) : {}; } catch (e) { dati = {}; }\n\nconst testo = (msgIn.testo || '').toLowerCase().trim();\nconst scelta = msgIn.bottone || '';\n\nconst risposte = [];\nconst out = {\n  azione: 'nessuna',\n  dettagli: {},\n  risposte,\n  nuovaSessione: { stato: 'menu', dati: {} },\n};\n\nconst aUtente = (payload) => risposte.push({ to: msgIn.waId, payload });\nconst testoWa = (t) => ({ type: 'text', text: { body: t, preview_url: false } });\n\nfunction avvisaTitolare(tipo, dettaglio) {\n  const OWNER = $env.TITOLARE_WA_ID;\n  if (!OWNER) return;\n  const TEMPLATE = $env.META_TEMPLATE_NOTIFICA;\n  if (TEMPLATE) {\n    // Template approvato: funziona anche fuori dalla finestra delle 24 ore\n    risposte.push({ to: OWNER, payload: { type: 'template', template: {\n      name: TEMPLATE, language: { code: 'it' },\n      components: [{ type: 'body', parameters: [\n        { type: 'text', text: tipo }, { type: 'text', text: dettaglio },\n      ]}],\n    }}});\n  } else {\n    // Testo libero: arriva solo se il titolare ha scritto al bot nelle ultime 24h\n    risposte.push({ to: OWNER, payload: testoWa('🔔 ' + tipo + '\\n' + dettaglio) });\n  }\n}\n\nconst MENU = {\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    header: { type: 'text', text: 'ArilùFarma · Assistente' },\n    body: { text: 'Ciao' + (msgIn.nome ? ' ' + msgIn.nome.split(' ')[0] : '') + '! 👋 Sono l\\u2019assistente virtuale di ArilùFarma. Come posso aiutarti?' },\n    footer: { text: 'Scrivi \"menu\" in qualsiasi momento per tornare qui.' },\n    action: { button: 'Scegli un servizio', sections: [{ title: 'Servizi', rows: [\n      { id: 'galenica',  title: '🧪 Preparato galenico', description: 'Richiedi un preparato su misura' },\n      { id: 'prenota',   title: '📅 Prenota',            description: 'Analisi o consulenza in sede' },\n      { id: 'info',      title: '🕒 Orari e contatti',   description: 'Dove siamo e quando' },\n      { id: 'operatore', title: '👤 Parla con noi',      description: 'Ti risponde il Dott. Conti' },\n    ]}]},\n  },\n};\n\nconst SALUTI = ['ciao', 'salve', 'buongiorno', 'buonasera', 'menu', 'start', 'annulla', 'indietro'];\n\n// ── Modalità \"umano\": il bot tace per 24h dopo il passaggio a operatore ──\nif (stato === 'umano') {\n  const da = dati.da ? DateTime.fromISO(dati.da) : DateTime.now().minus({ days: 2 });\n  const attiva = DateTime.now().diff(da, 'hours').hours < 24;\n  if (attiva && testo !== 'menu') {\n    // Silenzio: la conversazione è in mano al Dott. Conti\n    out.nuovaSessione = { stato: 'umano', dati };\n    return [{ json: out }];\n  }\n  stato = 'menu';\n}\n\n// ── Comandi di reset ──\nif (SALUTI.includes(testo) && !scelta) {\n  aUtente(MENU);\n  out.nuovaSessione = { stato: 'menu', dati: {} };\n  return [{ json: out }];\n}\n\n// ── Scelte dal menu principale ──\nif (scelta === 'galenica') {\n  aUtente(testoWa('🧪 *Preparato galenico su misura*\\n\\nScrivimi in un unico messaggio di cosa hai bisogno: il preparato (o la ricetta), il dosaggio se lo conosci e per chi è.\\n\\nPasso tutto al Dott. Conti, che ti conferma la proposta entro 24 ore.'));\n  out.nuovaSessione = { stato: 'galenica_attesa', dati: {} };\n  return [{ json: out }];\n}\n\nif (scelta === 'prenota') {\n  aUtente({ type: 'interactive', interactive: {\n    type: 'button',\n    body: { text: '📅 Perfetto! Cosa vuoi prenotare?' },\n    action: { buttons: [\n      { type: 'reply', reply: { id: 'tipo_analisi',    title: 'Analisi' } },\n      { type: 'reply', reply: { id: 'tipo_consulenza', title: 'Consulenza' } },\n    ]},\n  }});\n  out.nuovaSessione = { stato: 'prenota_tipo', dati: {} };\n  return [{ json: out }];\n}\n\nif (scelta === 'info') {\n  aUtente(testoWa(INFO));\n  out.nuovaSessione = { stato: 'menu', dati: {} };\n  return [{ json: out }];\n}\n\nif (scelta === 'operatore') {\n  aUtente(testoWa('👤 Ho avvisato il Dott. Conti: ti risponderà qui su WhatsApp appena possibile.\\n\\nNel frattempo scrivi pure la tua domanda. Per tornare all\\u2019assistente automatico scrivi *menu*.'));\n  avvisaTitolare('Richiesta di contatto', (msgIn.nome || 'Un cliente') + ' (+' + msgIn.waId + ') vuole parlare con te su WhatsApp.');\n  out.nuovaSessione = { stato: 'umano', dati: { da: DateTime.now().setZone(TZ).toISO() } };\n  return [{ json: out }];\n}\n\n// ── Stato: attesa descrizione galenica ──\nif (stato === 'galenica_attesa') {\n  if (msgIn.tipo !== 'text' || !msgIn.testo) {\n    aUtente(testoWa('Scrivimi due righe di testo con la tua richiesta, così la passo al Dott. Conti. 🙏'));\n    out.nuovaSessione = { stato: 'galenica_attesa', dati: {} };\n    return [{ json: out }];\n  }\n  out.azione = 'salva_richiesta';\n  out.dettagli = { descrizione: msgIn.testo, nome: msgIn.nome, waId: msgIn.waId };\n  aUtente(testoWa('✅ Richiesta ricevuta! Il Dott. Conti la sta già guardando: ti risponde qui su WhatsApp entro 24 ore con la proposta.\\n\\nScrivi *menu* se ti serve altro.'));\n  avvisaTitolare('Nuova richiesta galenica', (msgIn.nome || 'Cliente') + ' (+' + msgIn.waId + '): ' + msgIn.testo.slice(0, 300));\n  out.nuovaSessione = { stato: 'menu', dati: {} };\n  return [{ json: out }];\n}\n\n// ── Stato: scelta del tipo di prenotazione ──\nif (stato === 'prenota_tipo') {\n  if (scelta === 'tipo_analisi' || scelta === 'tipo_consulenza') {\n    const tipo = scelta === 'tipo_analisi' ? 'Analisi' : 'Consulenza';\n    const ora = DateTime.now().setZone(TZ);\n    out.azione = 'proponi_slot';\n    out.dettagli = { tipo, finestra: {\n      da: ora.toUTC().toISO(),\n      a: ora.plus({ days: 7 }).endOf('day').toUTC().toISO(),\n    }};\n    out.nuovaSessione = { stato: 'prenota_slot', dati: { tipo } };\n    return [{ json: out }];\n  }\n  aUtente(testoWa('Usa i pulsanti qui sopra per scegliere 😊 Oppure scrivi *menu* per ricominciare.'));\n  out.nuovaSessione = { stato: 'prenota_tipo', dati: {} };\n  return [{ json: out }];\n}\n\n// ── Stato: scelta dello slot ──\nif (stato === 'prenota_slot') {\n  if (scelta.startsWith('slot_')) {\n    const inizio = DateTime.fromISO(scelta.slice(5), { zone: TZ });\n    const fine = inizio.plus({ minutes: 30 });\n    const tipo = dati.tipo || 'Appuntamento';\n    const quando = inizio.setLocale('it').toFormat(\"cccc d LLLL 'alle' HH:mm\");\n    out.azione = 'crea_prenotazione';\n    out.dettagli = {\n      tipo,\n      nome: msgIn.nome || 'Cliente WhatsApp',\n      waId: msgIn.waId,\n      inizio: inizio.toISO(),\n      fine: fine.toISO(),\n      quando,\n    };\n    aUtente(testoWa('Fatto ✅ *' + tipo + '* fissata per *' + quando + '* con il Dott. Conti.\\n\\n📍 Via Silvio Vardabasso 1/a, Sassari\\n\\nSe devi spostarla o disdirla, scrivici qui. A presto!'));\n    avvisaTitolare('Nuova prenotazione', tipo + ' · ' + quando + ' · ' + (msgIn.nome || 'Cliente') + ' (+' + msgIn.waId + ')');\n    out.nuovaSessione = { stato: 'menu', dati: {} };\n    return [{ json: out }];\n  }\n  aUtente(testoWa('Scegli un orario dalla lista qui sopra, oppure scrivi *menu* per ricominciare.'));\n  out.nuovaSessione = { stato: 'prenota_slot', dati };\n  return [{ json: out }];\n}\n\n// ── Fallback: non ho capito → menu ──\naUtente(testoWa('Non sono sicuro di aver capito 🤔 Ecco cosa posso fare per te:'));\naUtente(MENU);\nout.nuovaSessione = { stato: 'menu', dati: {} };\nreturn [{ json: out }];"
-      }
+        "toolDescription": "Invia il pulsante dell'informativa privacy. Usalo SOLO se il cliente chiede ESPLICITAMENTE privacy, GDPR, informativa o trattamento dati. NON usarlo all'inizio, col saluto, o se manca la nota sistema: il pulsante parte già in automatico al primo messaggio.",
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1192264937307030/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('WhatsApp Trigger').first().json.messages[0].from, type: 'interactive', interactive: { type: 'cta_url', body: { text: 'Trattiamo i tuoi dati secondo la nostra informativa sulla privacy. Puoi leggerla qui sotto 👇' }, action: { name: 'cta_url', parameters: { display_text: 'Apri l’informativa', url: 'https://arilufarma.netlify.app/privacy.html' } } } }) }}",
+        "options": {}
+      },
+      "id": "66a2592c-64fc-4c35-a9ea-f8f0853c12e5",
+      "name": "Invia_informativa_privacy",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        3552,
+        -32
+      ]
     },
     {
-      "name": "Serve il calendario?",
-      "type": "n8n-nodes-base.if",
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Cancella (elimina) un appuntamento dal calendario della parafarmacia. Usalo SOLO dopo che il cliente ha confermato quale appuntamento annullare. Serve l'ID evento, che ottieni prima con Controlla_disponibilita.",
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "5ac8e6de854716e466c85351242d6f6351a4c8832a7d70ae8248e296ba0098f5@group.calendar.google.com",
+          "cachedResultName": "Farmacia"
+        },
+        "eventId": "={{ $fromAI('EventId', 'ID evento del calendario da cancellare, preso da Controlla_disponibilita', 'string') }}",
+        "options": {},
+        "resource": "event"
+      },
+      "id": "166ff856-1d49-4959-8626-a3e32ec75f02",
+      "name": "Cancella_appuntamento",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        3680,
+        -32
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Aggiorna una prenotazione esistente nel gestionale (foglio Prenotazioni), trovandola per numero cliente e orario di inizio. Usalo per annullare un appuntamento (stato = annullata) o per togliere il promemoria (Promemoria = no).",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": 1368498879,
+          "cachedResultName": "Prenotazioni"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "wa_id",
+            "inizio"
+          ],
+          "value": {
+            "wa_id": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}",
+            "inizio": "={{ $fromAI('Inizio', 'data e ora ISO di inizio della prenotazione da aggiornare, es. 2026-07-24T17:00:00+02:00', 'string') }}",
+            "stato": "={{ $fromAI('Stato', 'nuovo stato della prenotazione: annullata per annullarla, confermata per tenerla', 'string') }}",
+            "reminder": "={{ $fromAI('Promemoria', 'promemoria attivo: si oppure no', 'string') }}",
+            "event_id": "={{ $fromAI('EventId', 'ID evento Google Calendar se lo conosci, altrimenti lascia vuoto', 'string') }}"
+          },
+          "schema": [
+            {
+              "id": "data",
+              "displayName": "data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "wa_id",
+              "displayName": "wa_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nome",
+              "displayName": "nome",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "inizio",
+              "displayName": "inizio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stato",
+              "displayName": "stato",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "reminder",
+              "displayName": "reminder",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "event_id",
+              "displayName": "event_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ]
+        },
+        "options": {},
+        "resource": "sheet"
+      },
+      "id": "29a22001-6e90-4c84-844f-dbf067d5d30c",
+      "name": "Aggiorna_prenotazione",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3808,
+        -32
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Messaggi"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": true,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "data_ora",
+              "id": "data_ora",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "wa_id",
+              "id": "wa_id",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "nome_whatsapp",
+              "id": "nome_whatsapp",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "messaggio_cliente",
+              "id": "messaggio_cliente",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "risposta_bot",
+              "id": "risposta_bot",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "data_ora": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "messaggio_cliente": "={{ $('WhatsApp Trigger').first().json.messages[0].type === 'image' ? ('[Immagine]' + ($('WhatsApp Trigger').first().json.messages[0].image.caption ? (': ' + $('WhatsApp Trigger').first().json.messages[0].image.caption) : '')) : ($('WhatsApp Trigger').first().json.messages[0].type === 'audio' ? '[Audio]' : $('WhatsApp Trigger').first().json.messages[0].text.body) }}",
+            "nome_whatsapp": "={{ $('WhatsApp Trigger').first().json.contacts[0].profile.name }}",
+            "risposta_bot": "={{ $json.output }}",
+            "wa_id": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}"
+          }
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "id": "af46bcfa-1432-4b21-9220-3f3411d1c6d5",
+      "name": "Log conversazione",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4400,
+        -80
+      ],
+      "onError": "continueRegularOutput",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "description": "Verifica automaticamente che il preparato galenico richiesto esista davvero nel foglio Galenici e, SOLO in tal caso, salva la richiesta nel gestionale. Se non trova corrispondenza reale, NON salva nulla e restituisce un messaggio di errore da comunicare al cliente. Usalo dopo aver raccolto descrizione, forma farmaceutica, nome e cognome, e dopo aver trovato con Consulta_listino il nome esatto della riga in Galenici a cui corrisponde la richiesta.",
+        "workflowId": {
+          "__rl": true,
+          "cachedResultName": "ArilùFarma · Verifica e salva richiesta galenica",
+          "mode": "id",
+          "value": "gOx6lRmSk5F8Uj6T"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Nome",
+              "id": "Nome",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "Descrizione",
+              "id": "Descrizione",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "PreparatoGalenico",
+              "id": "PreparatoGalenico",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "canBeUsedToMatch": false,
+              "defaultMatch": false,
+              "display": true,
+              "displayName": "wa_id",
+              "id": "wa_id",
+              "required": false,
+              "type": "string"
+            }
+          ],
+          "value": {
+            "Descrizione": "={{ $fromAI('Descrizione', 'Descrizione del preparato richiesto: principio/composizione, dosaggio se noto, forma farmaceutica. Riporta solo quanto detto dal cliente, mai un nome commerciale inventato', 'string') }}",
+            "Nome": "={{ $fromAI('Nome', 'Nome e cognome reali del cliente', 'string') }}",
+            "PreparatoGalenico": "={{ $fromAI('PreparatoGalenico', 'Il nome ESATTO (uguale a quello nel foglio) del preparato trovato in Galenici tramite Consulta_listino che corrisponde a questa richiesta, es. Melatonina. Deve essere una riga reale trovata con lo strumento, mai un nome inventato o dedotto', 'string') }}",
+            "wa_id": "={{ $('WhatsApp Trigger').first().json.messages[0].from }}"
+          }
+        }
+      },
+      "id": "101c4bc6-2b51-409c-8540-fbe72d19eaa9",
+      "name": "Salva_richiesta_galenica",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
       "typeVersion": 2.2,
-      "position": [760, 120],
+      "position": [
+        4064,
+        -32
+      ]
+    },
+    {
       "parameters": {
         "conditions": {
           "options": {
             "caseSensitive": true,
             "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
+            "typeValidation": "strict",
+            "version": 1
           },
-          "combinator": "and",
           "conditions": [
             {
-              "id": "proponi",
-              "leftValue": "={{ $json.azione }}",
-              "rightValue": "proponi_slot",
+              "leftValue": "={{ $('WhatsApp Trigger').first().json.messages[0].type }}",
+              "rightValue": "image",
               "operator": {
                 "type": "string",
                 "operation": "equals"
               }
             }
-          ]
+          ],
+          "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "id": "4695a602-4d68-48d2-b1b4-8fae2a3bdc9c",
+      "name": "È un'immagine?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2560,
+        -256
+      ]
     },
     {
-      "name": "Eventi in agenda",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [960, -40],
       "parameters": {
-        "method": "GET",
-        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($env.GOOGLE_CALENDAR_ID) }}/events",
+        "url": "=https://graph.facebook.com/v20.0/{{ $('WhatsApp Trigger').first().json.messages[0].image.id }}",
         "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleCalendarOAuth2Api",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "timeMin", "value": "={{ $json.dettagli.finestra.da }}" },
-            { "name": "timeMax", "value": "={{ $json.dettagli.finestra.a }}" },
-            { "name": "singleEvents", "value": "true" },
-            { "name": "orderBy", "value": "startTime" },
-            { "name": "maxResults", "value": "250" }
-          ]
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "id": "7fb0a0b7-607a-4364-96d9-2634eeb42da8",
+      "name": "Ottieni URL media",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        2784,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "3024f794-a882-4c2e-9abe-b96b80ff7217",
+      "name": "Scarica immagine",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        2784,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.wa_id ? String($json.wa_id) : '' }}",
+              "operator": {
+                "type": "string",
+                "operation": "empty"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
         },
         "options": {}
-      }
+      },
+      "id": "da60aceb-2bfe-4d15-9400-e31de0570a5b",
+      "name": "Primo messaggio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1904,
+        -256
+      ],
+      "onError": "continueRegularOutput"
     },
     {
-      "name": "Filtra slot liberi",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1160, -40],
       "parameters": {
-        "jsCode": "// Calcola gli slot liberi incrociando gli orari di apertura con l'agenda.\n// ADATTA \"ORARI\" agli orari reali della parafarmacia (weekday: 1=lun … 7=dom).\nconst TZ = 'Europe/Rome';\nconst ORARI = {\n  1: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  2: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  3: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  4: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  5: [[9, 0, 13, 0], [16, 0, 20, 0]],\n  6: [[9, 0, 13, 0]],\n  7: [],\n};\nconst DURATA_MIN = 30;      // durata di ogni appuntamento\nconst MAX_SLOT = 9;         // massimo 10 righe in una lista WhatsApp\nconst MAX_PER_GIORNO = 3;   // per proporre più giorni diversi\n\nconst cervello = $('Cervello del bot').first().json;\nconst tipo = cervello.dettagli.tipo || 'Appuntamento';\n\n// La risposta dell'API Calendar è un item con { items: [...] }\nconst eventi = $input.all().flatMap(i => i.json.items || []);\nconst occupati = eventi\n  .filter(e => e.status !== 'cancelled')\n  .map(e => ({\n    da: DateTime.fromISO(e.start?.dateTime || (e.start?.date + 'T00:00:00'), { zone: TZ }),\n    a:  DateTime.fromISO(e.end?.dateTime   || (e.end?.date   + 'T00:00:00'), { zone: TZ }),\n  }));\n\nconst slots = [];\nconst oggi = DateTime.now().setZone(TZ).startOf('day');\nfor (let d = 1; d <= 7 && slots.length < MAX_SLOT; d++) {\n  const g = oggi.plus({ days: d });\n  let delGiorno = 0;\n  for (const [h1, m1, h2, m2] of (ORARI[g.weekday] || [])) {\n    let t = g.set({ hour: h1, minute: m1 });\n    const chiusura = g.set({ hour: h2, minute: m2 });\n    while (t.plus({ minutes: DURATA_MIN }) <= chiusura && slots.length < MAX_SLOT && delGiorno < MAX_PER_GIORNO) {\n      const tFine = t.plus({ minutes: DURATA_MIN });\n      const libero = !occupati.some(o => t < o.a && tFine > o.da);\n      if (libero) { slots.push(t); delGiorno++; }\n      t = tFine;\n    }\n  }\n}\n\nconst waId = $('Estrai messaggio').first().json.waId;\nconst risposte = [];\n\nif (!slots.length) {\n  risposte.push({ to: waId, payload: { type: 'text', text: {\n    body: 'In questi giorni l\\u2019agenda è piena 😔 Scrivici qui la tua disponibilità e ti ricontattiamo noi, oppure passa in sede senza appuntamento.',\n    preview_url: false,\n  }}});\n  return [{ json: { azione: 'nessuna', risposte, nuovaSessione: { stato: 'menu', dati: {} } } }];\n}\n\nrisposte.push({ to: waId, payload: { type: 'interactive', interactive: {\n  type: 'list',\n  header: { type: 'text', text: 'Orari disponibili' },\n  body: { text: '📅 Ecco i primi orari liberi per la tua *' + tipo.toLowerCase() + '*. Scegli quello che preferisci:' },\n  footer: { text: 'Scrivi \"menu\" per annullare.' },\n  action: { button: 'Vedi gli orari', sections: [{ title: tipo, rows: slots.map(t => ({\n    id: 'slot_' + t.toISO({ suppressMilliseconds: true, includeOffset: false }),\n    title: t.setLocale('it').toFormat('ccc d LLL · HH:mm'),\n    description: tipo + ' · 30 minuti',\n  }))}]},\n}}});\n\nreturn [{ json: { azione: 'nessuna', risposte, nuovaSessione: cervello.nuovaSessione } }];"
-      }
+        "method": "POST",
+        "url": "https://graph.facebook.com/v20.0/1192264937307030/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('WhatsApp Trigger').first().json.messages[0].from, type: 'interactive', interactive: { type: 'cta_url', body: { text: 'Trattiamo i tuoi dati secondo la nostra informativa sulla privacy. Puoi leggerla qui sotto 👇' }, action: { name: 'cta_url', parameters: { display_text: 'Apri l’informativa', url: 'https://arilufarma.netlify.app/privacy.html' } } } }) }}",
+        "options": {}
+      },
+      "id": "9a71a3d4-dcd7-4fcd-9344-ed60ed92994a",
+      "name": "Invia_informativa_privacy (auto)",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.4,
+      "position": [
+        2128,
+        -128
+      ],
+      "onError": "continueRegularOutput"
     },
     {
-      "name": "Che azione fare?",
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.2,
-      "position": [960, 280],
       "parameters": {
-        "rules": {
-          "values": [
+        "assignments": {
+          "assignments": [
             {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "loose",
-                  "version": 2
-                },
-                "combinator": "and",
-                "conditions": [
-                  {
-                    "id": "r1",
-                    "leftValue": "={{ $json.azione }}",
-                    "rightValue": "crea_prenotazione",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "prenotazione"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "loose",
-                  "version": 2
-                },
-                "combinator": "and",
-                "conditions": [
-                  {
-                    "id": "r2",
-                    "leftValue": "={{ $json.azione }}",
-                    "rightValue": "salva_richiesta",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ]
-              },
-              "renameOutput": true,
-              "outputKey": "richiesta galenica"
+              "id": "1",
+              "name": "privacyAutoSent",
+              "value": true,
+              "type": "boolean"
             }
           ]
         },
-        "options": {
-          "fallbackOutput": "extra",
-          "renameFallbackOutput": "solo risposta"
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a33316e6-3554-4bca-a6b0-67ce7ba5573f",
+      "name": "Segna privacy inviata",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2336,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Consulta orario di apertura, indirizzo, telefono ed email dal foglio DatiFissi. Usalo SOLO se nel messaggio utente manca [DATI NEGOZIO DA FOGLIO] e il cliente chiede orari, indirizzo o email, oppure prima di proporre slot. Riporta i valori esatti, mai a memoria.",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "DatiFissi"
+        },
+        "options": {},
+        "resource": "sheet"
+      },
+      "id": "ede7896d-9310-46c2-b4f6-f7868b978a15",
+      "name": "Consulta_dati_fissi",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        4192,
+        -32
+      ],
+      "executeOnce": true
+    },
+    {
+      "id": "0c03a90e-bd22-419b-b928-24266b4a632b",
+      "name": "Consulta_listino",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3936,
+        -32
+      ],
+      "parameters": {
+        "description": "Cerca nel listino (Prodotti, Galenici, Servizi, Offerte) e restituisce SOLO le righe pertinenti (max 8). Usalo UNA sola volta per prodotto o disturbo, con Foglio VUOTO: cerca già in tutti i fogli. Passa solo Query (nome, marca, principio attivo, servizio o disturbo). Non chiamarlo una seconda volta sullo stesso prodotto. Seconda chiamata solo se il cliente cambia prodotto o la prima risposta è vuota/incompleta.",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "Sld2FlyBwuEHKYsY",
+          "cachedResultName": "ArilùFarma · Consulta listino"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "schema": [
+            {
+              "id": "Query",
+              "displayName": "Query",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Foglio",
+              "displayName": "Foglio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "value": {
+            "Query": "={{ $fromAI('Query', 'Nome prodotto, marca, principio attivo, servizio o disturbo da cercare nel listino', 'string') }}",
+            "Foglio": "={{ $fromAI('Foglio', 'Opzionale: Prodotti, Galenici, Servizi, Offerte o combinazione. Vuoto = cerca in tutti', 'string') }}"
+          }
         }
       }
     },
     {
-      "name": "Crea evento in agenda",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1160, 180],
+      "id": "b8ca079b-7914-4be2-9103-877a7684dde0",
+      "name": "Sposta_appuntamento",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        3168,
+        160
+      ],
       "parameters": {
-        "method": "POST",
-        "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ encodeURIComponent($env.GOOGLE_CALENDAR_ID) }}/events",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleCalendarOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ summary: $json.dettagli.tipo + ' · ' + $json.dettagli.nome + ' (WhatsApp)', description: 'Prenotazione dall\\u2019assistente WhatsApp ArilùFarma.\\nCliente: ' + $json.dettagli.nome + '\\nWhatsApp: +' + $json.dettagli.waId, start: { dateTime: $json.dettagli.inizio, timeZone: 'Europe/Rome' }, end: { dateTime: $json.dettagli.fine, timeZone: 'Europe/Rome' } }) }}",
-        "options": {}
-      }
+        "descriptionType": "manual",
+        "toolDescription": "Sposta un appuntamento esistente nel calendario, tenendo lo stesso EventId. Usalo SOLO dopo conferma del cliente e dopo aver controllato che il nuovo orario sia libero. Non creare un secondo evento.",
+        "resource": "event",
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "5ac8e6de854716e466c85351242d6f6351a4c8832a7d70ae8248e296ba0098f5@group.calendar.google.com",
+          "cachedResultName": "Farmacia"
+        },
+        "eventId": "={{ $fromAI('EventId', 'ID evento Google Calendar da spostare, preso da Controlla_disponibilita o dalla prenotazione', 'string') }}",
+        "useDefaultReminders": true,
+        "updateFields": {
+          "start": "={{ $fromAI('Start', 'Nuovo inizio ISO con fuso, es. 2026-09-04T10:00:00+02:00', 'string') }}",
+          "end": "={{ $fromAI('End', 'Nuova fine ISO con fuso, di solito inizio + 30 minuti', 'string') }}"
+        }
+      },
+      "executeOnce": true
     },
     {
-      "name": "Salva prenotazione",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [1360, 180],
+      "id": "e292aedd-dfa9-4613-af7a-134fd64b2a44",
+      "name": "Aggiorna_prenotazione_per_id",
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        3808,
+        160
+      ],
       "parameters": {
-        "operation": "append",
+        "descriptionType": "manual",
+        "toolDescription": "Aggiorna una riga del foglio Prenotazioni trovandola per event_id. Usalo dopo Sposta_appuntamento per scrivere il nuovo Inizio. Se event_id manca, usa Aggiorna_prenotazione (wa_id + inizio vecchio).",
+        "resource": "sheet",
+        "operation": "update",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
-          "mode": "id"
+          "mode": "list",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Prenotazioni",
-          "mode": "name"
+          "mode": "list",
+          "value": 1368498879,
+          "cachedResultName": "Prenotazioni"
         },
         "columns": {
           "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "event_id"
+          ],
           "value": {
-            "data": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
-            "wa_id": "={{ $('Cervello del bot').first().json.dettagli.waId }}",
-            "nome": "={{ $('Cervello del bot').first().json.dettagli.nome }}",
-            "tipo": "={{ $('Cervello del bot').first().json.dettagli.tipo }}",
-            "inizio": "={{ $('Cervello del bot').first().json.dettagli.inizio }}",
-            "stato": "confermata"
-          },
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      }
+            "event_id": "={{ $fromAI('EventId', 'ID evento Google Calendar della prenotazione', 'string') }}",
+            "inizio": "={{ $fromAI('Inizio', 'Nuovo inizio ISO con fuso', 'string') }}",
+            "stato": "={{ $fromAI('Stato', 'confermata oppure annullata', 'string') }}",
+            "reminder": "={{ $fromAI('Promemoria', 'si oppure no', 'string') }}"
+          }
+        }
+      },
+      "executeOnce": true
     },
     {
-      "name": "Salva richiesta galenica",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [1160, 380],
-      "parameters": {
-        "operation": "append",
-        "documentId": {
-          "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
-          "mode": "id"
-        },
-        "sheetName": {
-          "__rl": true,
-          "value": "RichiesteGaleniche",
-          "mode": "name"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "data": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}",
-            "wa_id": "={{ $json.dettagli.waId }}",
-            "nome": "={{ $json.dettagli.nome }}",
-            "descrizione": "={{ $json.dettagli.descrizione }}",
-            "stato": "nuova"
-          },
-          "matchingColumns": [],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
-        },
-        "options": {}
-      }
-    },
-    {
-      "name": "Prepara invii",
+      "id": "e362a189-f3cc-4b94-a1e7-d84032f61e4a",
+      "name": "Dedup messaggi e pulizia memoria",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1580, 120],
+      "position": [
+        1008,
+        -520
+      ],
       "parameters": {
-        "jsCode": "// Trasforma l'array \"risposte\" in un item per ogni messaggio da inviare.\nconst cervello = $('Cervello del bot').first().json;\nconst sorgente = ($json && Array.isArray($json.risposte)) ? $json : cervello;\nconst nuovaSessione = sorgente.nuovaSessione || cervello.nuovaSessione || { stato: 'menu', dati: {} };\nreturn (sorgente.risposte || []).map(r => ({ json: {\n  to: r.to,\n  payload: r.payload,\n  statoSessione: nuovaSessione.stato,\n  datiSessione: JSON.stringify(nuovaSessione.dati || {}),\n} }));"
-      }
+        "jsCode": "const wa = String($('WhatsApp Trigger').first().json.messages[0].from || '');\nconst data = $getWorkflowStaticData('global');\ndata.known = data.known || {};\ndata.booking = data.booking || {};\ndata.lastBot = data.lastBot || {};\ndata.lastWamid = data.lastWamid || {};\n\n// Il vecchio mutex (data.locks) e' stato rimosso: $getWorkflowStaticData viene\n// persistito solo a fine esecuzione e non e' atomico fra esecuzioni concorrenti,\n// quindi due messaggi simultanei leggevano entrambi \"lock libero\". Non\n// serializzava nulla: aggiungeva solo latenza e, col ciclo di attesa, bruciava\n// slot di esecuzione. Restano la deduplica dei messaggi e la manutenzione.\ndelete data.locks;\n\nconst now = Date.now();\nconst cutoff = now - 7 * 24 * 60 * 60 * 1000;\nfor (const [k, v] of Object.entries(data.booking)) {\n  const ts = v && typeof v === 'object' ? Number(v.ts || 0) : 0;\n  if (!ts || ts < cutoff) delete data.booking[k];\n}\nfor (const k of Object.keys(data.lastBot)) {\n  if (!data.booking[k]) delete data.lastBot[k];\n}\n\nlet wamid = '';\ntry { wamid = String($('WhatsApp Trigger').first().json.messages[0].id || ''); } catch (e) {}\nconst dup = !!(wamid && data.lastWamid[wa] === wamid);\nif (wamid) data.lastWamid[wa] = wamid;\nreturn [{ json: { wa_id: wa, duplicate: dup } }];\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
     },
     {
-      "name": "Invia su WhatsApp",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1780, 120],
+      "id": "72205a8e-84d8-4631-8834-92b7c345bc20",
+      "name": "Segna cliente visto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        -220
+      ],
       "parameters": {
-        "method": "POST",
-        "url": "=https://graph.facebook.com/{{ $env.META_API_VERSION || \"v20.0\" }}/{{ $env.META_PHONE_NUMBER_ID }}/messages",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.META_ACCESS_TOKEN }}" },
-            { "name": "Content-Type", "value": "application/json" }
+        "jsCode": "const wa = String($('WhatsApp Trigger').first().json.messages[0].from || '');\nconst data = $getWorkflowStaticData('global');\ndata.known = data.known || {};\ndata.known[wa] = Date.now();\nconst cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;\nfor (const [k, v] of Object.entries(data.known)) {\n  const t = typeof v === 'number' ? v : Date.parse(String(v));\n  if (!t || t < cutoff) delete data.known[k];\n}\nreturn [{ json: { wa_id: wa } }];\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "0c7c0fe3-6e97-4d42-91dd-c06c7fe853f1",
+      "name": "Cliente gia visto?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -400
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const wa = String($('WhatsApp Trigger').first().json.messages[0].from || '');\nconst data = $getWorkflowStaticData('global');\ndata.known = data.known || {};\nconst seen = data.known[wa];\nconst t = typeof seen === 'number' ? seen : Date.parse(String(seen || ''));\nfunction ymdRome(ms) {\n  return new Intl.DateTimeFormat('en-CA', {\n    timeZone: 'Europe/Rome',\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n  }).format(new Date(ms));\n}\nconst sameDay = !!(t && ymdRome(t) === ymdRome(Date.now()));\nreturn [{ json: { wa_id: sameDay ? wa : '' } }];\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "f04140ac-bc55-4e22-be57-e186708810ba",
+      "name": "Stato prenotazione",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1784,
+        -520
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "let wa = '';\nlet seenWa = '';\nlet rawMsg = '';\ntry {\n  const trig = $('WhatsApp Trigger').first().json;\n  wa = String(trig.messages[0].from || '');\n  const type = String(trig.messages[0].type || 'text');\n  rawMsg = type === 'text' ? String(trig.messages[0].text && trig.messages[0].text.body || '') : '';\n} catch (e) {}\ntry {\n  seenWa = String($('Cliente gia visto?').first().json.wa_id || '');\n} catch (e) {}\n\nconst empty = { servizio: '', giorno: '', ora: '', nome: '', reminder: '', confirmed: false, reminderAsked: false, booked: false, event_id: '', ts: Date.now() };\n\nfunction pack(note, st, fastConfirm, fastText) {\n  return [{ json: { wa_id: seenWa, bookingLine: note || '', booking: st || empty, fastConfirm: !!fastConfirm, fastText: fastText || '' } }];\n}\n\ntry {\n  const data = $getWorkflowStaticData('global');\n  data.booking = data.booking || {};\n  data.lastBot = data.lastBot || {};\n  const now = Date.now();\n  const cutoff = now - 7 * 24 * 60 * 60 * 1000;\n  for (const store of [data.booking, data.lastBot]) {\n    for (const [k, v] of Object.entries(store)) {\n      const ts = v && typeof v === 'object' ? Number(v.ts || 0) : 0;\n      if (ts && ts < cutoff) delete store[k];\n    }\n  }\n  const prev = data.booking[wa] || {};\n\n  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\\s+/g, ' ').trim();\n  const cap = (s) => String(s || '').toLowerCase().replace(/(^|\\s|')([a-z])/g, (m, a, b) => a + b.toUpperCase());\n\n  const ALIAS = [\n    { keys: ['profilo lipidico', 'colesterolo', 'trigliceridi'], label: 'Profilo Lipidico' },\n    { keys: ['emoglobina glicata', 'glicata'], label: 'Emoglobina glicata' },\n    { keys: ['analisi capelli', 'analisi pelle'], label: 'Analisi capelli e pelle' },\n    { keys: ['noleggio tiralatte', 'tiralatte'], label: 'Noleggio tiralatte' },\n    { keys: ['preparazioni galeniche', 'preparati galenici'], label: 'Preparazioni galeniche' },\n    { keys: ['pressione arteriosa', 'misurazione pressione'], label: 'Pressione arteriosa' },\n    { keys: ['foro lobi', 'foro lobo', 'orecchini', 'piercing orecchie'], label: 'Foro lobi + orecchini' },\n    { keys: ['spirometria'], label: 'Spirometria' },\n    { keys: ['glicemia'], label: 'Glicemia' },\n    { keys: ['vitamina d'], label: 'Vitamina D' },\n    { keys: ['vitamina b'], label: 'Vitamina B' },\n    { keys: ['ferritina'], label: 'Ferritina' },\n    { keys: ['consulenza'], label: 'Consulenza' },\n    { keys: ['moc'], label: 'MOC' },\n  ];\n  const catalog = Array.isArray(data.serviziCatalog) ? data.serviziCatalog : [];\n  const SERVIZI = [];\n  if (catalog.length) {\n    for (const r of catalog) {\n      const label = String(r.nome || '').trim();\n      if (!label) continue;\n      const n = norm(label);\n      const keys = [n, ...n.split(/[^a-z0-9]+/).filter((tok) => tok.length >= 4)];\n      if (r.alias) {\n        for (const a of String(r.alias).split(/[,;|/]+/).map(norm).filter(Boolean)) {\n          if (!keys.includes(a)) keys.push(a);\n        }\n      }\n      const alias = ALIAS.find((a) => norm(a.label) === n || a.keys.some((k) => n.includes(k)));\n      if (alias) for (const k of alias.keys) if (!keys.includes(k)) keys.push(k);\n      SERVIZI.push({ keys, label });\n    }\n  } else {\n    SERVIZI.push(...ALIAS);\n  }\n\n  function findServizio(text) {\n    const t = norm(text);\n    if (!t) return '';\n    if (/\\bprofili\\b/.test(t) && !/lipidic|colesterol|triglicer/.test(t)) return '';\n    if (/che servizio|quale servizio|servizio da prenotare|quali servizi/.test(t)) return '';\n    for (const s of SERVIZI) if (s.keys.some((k) => t.includes(k))) return s.label;\n    return '';\n  }\n  function weekdayRome(offsetDays) {\n    const names = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];\n    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Rome', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());\n    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));\n    const d = new Date(Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day)));\n    d.setUTCDate(d.getUTCDate() + offsetDays);\n    return names[d.getUTCDay()];\n  }\n  function findGiorno(text) {\n    const t = norm(text);\n    if (/lunedi.?venerdi|orari|siamo aperti/.test(t)) return '';\n    if (/\\boggi\\b/.test(t)) return weekdayRome(0);\n    if (/\\bdomani\\b/.test(t)) return weekdayRome(1);\n    const days = [['lunedi','lunedì'],['martedi','martedì'],['mercoledi','mercoledì'],['giovedi','giovedì'],['venerdi','venerdì'],['sabato','sabato'],['domenica','domenica']];\n    for (const [n, l] of days) if (t.includes(n)) return l;\n    return '';\n  }\n  function findOra(text) {\n    const t = norm(text);\n    if (/siamo aperti|orari|lunedi.?venerdi/.test(t)) return '';\n    const m = t.match(/\\b(?:alle?\\s+)?(\\d{1,2})(?:[:\\.](\\d{2}))?\\b/);\n    if (!m) return '';\n    const h = Number(m[1]);\n    if (h < 7 || h > 20) return '';\n    return String(h).padStart(2, '0') + ':' + (m[2] || '00');\n  }\n  function findName(text) {\n    const raw = String(text || '').trim();\n    const t = norm(raw);\n    if (!t || /[?:;,]/.test(raw)) return null;\n    if (/^(si|sì|no|ok|cok|k|ciao|buonasera|buongiorno|buon pomeriggio|grazie|prego|perfetto|certo|va bene|confermo)$/.test(t)) return null;\n    if (/oggi|domani|detto|preferisco|libero|non sabato/.test(t)) return null;\n    if (/grazie|prego|reminder|promemoria|conferma|va bene|prenot|servizio|glicem|sabato|alle |figlia|figlio/.test(t) && !/cognome|profili|mi chiamo/.test(t)) return null;\n    const parts = raw.split(/\\s+/).filter((p) => !/^(il|mio|cognome|è|e|mi|chiamo)$/i.test(p));\n    if (/\\bprofili\\b/.test(t) || /cognome|mi chiamo/.test(t)) {\n      if (parts.length >= 2) return parts.map(cap).join(' ');\n      return cap(parts[parts.length - 1] || '');\n    }\n    if (parts.length >= 2 && parts.length <= 3 && /^[a-zA-ZÀ-ÿ' ]+$/.test(raw) && !findServizio(raw) && !findGiorno(raw)) {\n      return parts.map(cap).join(' ');\n    }\n    return null;\n  }\n\n  const clientTexts = rawMsg ? [rawMsg] : [];\n  const botTexts = data.lastBot[wa] ? [String(data.lastBot[wa])] : [];\n  const lastUser = norm(rawMsg);\n  const newIntent = /nuova prenotazione|un'altra prenotazione|altra prenotazione|vorrei (misurare|prenotare|fare)|per mia figlia|per mio figlio|altro servizio|un altro appuntamento/.test(lastUser);\n  const ack = /^(si|sì|ok|cok|k|va bene|confermo|perfetto|certo)$/.test(lastUser);\n  const isGreeting = /^(ciao|salve|buongiorno|buonasera|buon pomeriggio|hey|ehi|hello|hola)([\\s!.]*)?$/.test(lastUser);\n\n  const st = {\n    servizio: prev.servizio || '',\n    giorno: prev.giorno || '',\n    ora: prev.ora || '',\n    nome: prev.nome && String(prev.nome).length <= 40 && !/grazie|prego|sì grazie|ho detto|oggi/i.test(String(prev.nome)) ? prev.nome : '',\n    reminder: prev.reminder || '',\n    confirmed: !!prev.confirmed,\n    reminderAsked: !!prev.reminderAsked,\n    booked: !!prev.booked || !!prev.event_id,\n    event_id: prev.event_id || '',\n    ts: now,\n  };\n\n  if (/\\boggi\\b/.test(lastUser)) {\n    st.giorno = weekdayRome(0);\n    st.booked = false;\n  } else if (/\\bdomani\\b/.test(lastUser)) {\n    st.giorno = weekdayRome(1);\n    st.booked = false;\n  }\n\n  const incomingServizio = rawMsg ? findServizio(rawMsg) : '';\n  if (incomingServizio && incomingServizio !== st.servizio && !ack && !isGreeting) {\n    st.servizio = incomingServizio;\n    st.giorno = '';\n    st.ora = '';\n    st.reminder = '';\n    st.confirmed = false;\n    st.reminderAsked = false;\n    st.booked = false;\n    st.event_id = '';\n  } else if (newIntent) {\n    st.confirmed = false;\n    st.reminderAsked = false;\n    st.booked = false;\n    st.reminder = '';\n    st.event_id = '';\n    if (incomingServizio) st.servizio = incomingServizio;\n  }\n  if (/\\boggi\\b/.test(lastUser)) st.giorno = weekdayRome(0);\n  if (/\\bdomani\\b/.test(lastUser)) st.giorno = weekdayRome(1);\n\n  // Quando la prenotazione e' gia' salvata non si ri-estraggono i campi dal\n  // testo: si conserva lo stato cosi' com'e'. (Qui c'era una riscrittura\n  // cablata di giorno/ora per un cliente specifico: rimossa.)\n  if (!(st.booked && !newIntent)) {\n    for (const text of botTexts.concat(clientTexts)) {\n      const sv = findServizio(text);\n      if (sv && !st.servizio) st.servizio = sv;\n      const g = findGiorno(text); if (g) st.giorno = g;\n      const o = findOra(text); if (o) st.ora = o;\n    }\n    for (const text of clientTexts) {\n      const nm = findName(text);\n      if (nm && nm.length <= 40) st.nome = nm;\n    }\n  }\n  if (/\\boggi\\b/.test(lastUser)) st.giorno = weekdayRome(0);\n  if (/\\bdomani\\b/.test(lastUser)) st.giorno = weekdayRome(1);\n\n  const lastBot = norm(botTexts[botTexts.length - 1] || '');\n  const yes = ack;\n  const no = /^(no)$/.test(lastUser);\n  if (/promemoria/.test(lastBot)) st.reminderAsked = true;\n  if (/conferma che va bene|va bene cosi/.test(lastBot) && yes) st.confirmed = true;\n  if (/promemoria/.test(lastBot) && yes) { st.confirmed = true; st.reminder = 'si'; st.reminderAsked = true; }\n  if (/promemoria/.test(lastBot) && no) { st.confirmed = true; st.reminder = 'no'; st.reminderAsked = true; }\n  if (!st.booked && /e confermato|confermata|ho prenotato/.test(lastBot)) st.booked = true;\n\n  const readyToBook = !!(st.servizio && st.giorno && st.ora && st.nome && (st.reminderAsked || st.confirmed));\n  if (!st.booked && readyToBook && yes) st.confirmed = true;\n\n  const asksConfirm = /(e|gia)\\s+confermat|confermato\\s*\\?|gia prenot|appuntamento (e |gia )?conferm|ok e confermat/.test(lastUser);\n  const lastWasConfirm = /e confermato|confermata|ho prenotato/.test(lastBot);\n  if (!newIntent && lastWasConfirm) {\n    st.booked = true;\n    st.confirmed = true;\n  }\n\n  data.booking[wa] = st;\n\n  const fastConfirm = !newIntent && !isGreeting && !!st.booked && asksConfirm;\n  const fastText = fastConfirm\n    ? ('Sì, è confermato ✅\\n' + [st.servizio, st.nome && ('per ' + st.nome), st.giorno, st.ora && ('alle ' + st.ora)].filter(Boolean).join(' ') + '.')\n    : '';\n\n  let note = '';\n  if ((st.booked || st.event_id) && !newIntent) {\n    if (isGreeting) {\n      note = ' [PRENOTAZIONE GIÀ SALVATA in background: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Il cliente sta SOLO salutando. Rispondi con un saluto breve e «Come posso aiutarla?». NON ripetere la conferma. NON creare eventi.]';\n    } else {\n      note = ' [PRENOTAZIONE GIÀ SALVATA: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Citala SOLO se chiede conferma. Vietato citare altri clienti del calendario. VIETATO creare un secondo evento.]';\n    }\n  } else if (readyToBook && yes) {\n    note = ' [PRENOTAZIONE DA CONFERMARE: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Controlla_disponibilita prima. Se esiste già un evento con STESSO nome e orario, non crearne un altro.]';\n  } else {\n    const known = [];\n    if (st.servizio) known.push(st.servizio);\n    if (st.giorno) known.push(st.giorno);\n    if (st.ora) known.push(st.ora);\n    if (st.nome) known.push(st.nome);\n    const bits = [];\n    if (known.length) bits.push('campi già detti: ' + known.join(', ') + '. Non ririchiederli.');\n    if (!st.nome && st.servizio && st.giorno && st.ora) bits.push('Manca nome e cognome.');\n    bits.push('Se ha detto OGGI il giorno è oggi, non sabato. Vietato citare nomi di altri clienti letti dal calendario.');\n    note = ' [PRENOTAZIONE: ' + bits.join(' ') + ']';\n  }\n\n  return pack(note, st, fastConfirm, fastText);\n} catch (e) {\n  return pack('', empty, false, '');\n}\n"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "ff4a8b01-527b-4f2e-bc79-2464c4b6fb06",
+      "name": "Consolida stato prenotazione",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4624,
+        -80
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const wa = String($('WhatsApp Trigger').first().json.messages[0].from || '');\nlet out = '';\nlet rawMsg = '';\ntry { out = String($('Normalizza risposta').first().json.output || $('AI Agent').first().json.output || $('Conferma già fatta').first().json.output || ''); } catch (e) {}\ntry {\n  const trig = $('WhatsApp Trigger').first().json;\n  rawMsg = trig.messages[0].type === 'text' ? String(trig.messages[0].text && trig.messages[0].text.body || '') : '';\n} catch (e) {}\nconst data = $getWorkflowStaticData('global');\ndata.booking = data.booking || {};\ndata.lastBot = data.lastBot || {};\nif (out) data.lastBot[wa] = out.slice(0, 800);\nconst st = Object.assign({\n  servizio: '', giorno: '', ora: '', nome: '', reminder: '', confirmed: false, reminderAsked: false, booked: false, event_id: '', ts: Date.now()\n}, data.booking[wa] || {});\nconst norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\nconst t = norm(out);\nconst u = norm(rawMsg);\nconst newIntent = /nuova prenotazione|un'altra prenotazione|altra prenotazione|vorrei (misurare|prenotare|fare)|per mia figlia|per mio figlio|altro servizio/.test(u);\nif (newIntent) {\n  st.booked = false;\n  st.confirmed = false;\n  st.reminderAsked = false;\n  st.event_id = '';\n}\nif (/e confermato|confermata|ho prenotato|confermato/.test(t) && !newIntent) {\n  st.booked = true;\n  st.confirmed = true;\n}\nst.ts = Date.now();\ndata.booking[wa] = st;\nreturn [{ json: { wa_id: wa, booking: st } }];"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "40b0a8cc-6682-4b23-b7c2-e5a856075f55",
+      "name": "Controlla cache servizi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        -640
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const data = $getWorkflowStaticData('global');\nconst ttl = 5 * 60 * 1000;\nconst rows = Array.isArray(data.serviziCatalog) ? data.serviziCatalog : [];\nconst df = data.datiFissi && typeof data.datiFissi === 'object' ? data.datiFissi : {};\nconst hit = rows.length > 0 && Object.keys(df).length > 0 && data.serviziCachedAt && (Date.now() - Number(data.serviziCachedAt) < ttl);\nreturn [{ json: { cacheHit: !!hit, n: rows.length, dati: Object.keys(df).length } }];"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "59e5c59a-cbf5-4ece-9a81-9553d264604e",
+      "name": "Cache servizi valida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        -640
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "servizi-cache-hit",
+              "leftValue": "={{ $json.cacheHit }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify(Object.assign({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $json.to }, $json.payload)) }}",
+        "looseTypeValidation": true,
         "options": {}
       }
     },
     {
-      "name": "Aggiorna sessione",
+      "id": "9fe70718-0342-4931-9a44-064dd73a767f",
+      "name": "Leggi Servizi foglio",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [1980, 120],
-      "executeOnce": true,
+      "typeVersion": 4.7,
+      "position": [
+        2128,
+        -720
+      ],
       "parameters": {
-        "operation": "appendOrUpdate",
+        "resource": "sheet",
+        "operation": "read",
         "documentId": {
           "__rl": true,
-          "value": "={{ $env.GOOGLE_SHEET_ID }}",
-          "mode": "id"
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
         },
         "sheetName": {
           "__rl": true,
-          "value": "Sessioni",
-          "mode": "name"
+          "mode": "name",
+          "value": "Servizi"
         },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "wa_id": "={{ $('Estrai messaggio').first().json.waId }}",
-            "nome": "={{ $('Estrai messaggio').first().json.nome }}",
-            "stato": "={{ $('Prepara invii').first().json.statoSessione }}",
-            "dati": "={{ $('Prepara invii').first().json.datiSessione }}",
-            "aggiornato": "={{ $now.setZone('Europe/Rome').toFormat('yyyy-MM-dd HH:mm:ss') }}"
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "id": "df99513a-a7e9-49c3-af7c-58b506d9d538",
+      "name": "Aggiorna cache servizi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        -720
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const servizi = [];\nconst offerte = [];\nconst datiFissi = {};\ntry {\n  for (const r of $input.all().map(i => i.json).filter(Boolean)) {\n    if (r.campo) {\n      const k = String(r.campo || '').trim();\n      const v = String(r.valore || '').trim();\n      if (k && v) datiFissi[k] = v;\n    } else if (r.titolo) {\n      const titolo = String(r.titolo || '').trim();\n      if (!titolo || /^\\(esempio\\)/i.test(titolo)) continue;\n      offerte.push({\n        titolo,\n        descrizione: String(r.descrizione || '').trim(),\n        prezzo_sconto: String(r.prezzo_sconto || '').trim(),\n        valido_fino: String(r.valido_fino || '').trim()\n      });\n    } else if (r.servizio || r.nome) {\n      const nome = String(r.servizio || r.nome || '').trim();\n      if (!nome) continue;\n      servizi.push({\n        nome,\n        prezzo: String(r.prezzo || '').trim(),\n        note: String(r.note || '').trim(),\n        alias: String(r.alias || r.aliases || r.sinonimi || '').trim()\n      });\n    }\n  }\n} catch (e) {}\nconst data = $getWorkflowStaticData('global');\nif (servizi.length) data.serviziCatalog = servizi;\nelse delete data.serviziCatalog;\ndata.offerteCatalog = offerte;\nif (Object.keys(datiFissi).length) data.datiFissi = datiFissi;\ndata.serviziCachedAt = Date.now();\nreturn [{ json: { ok: true, servizi: (data.serviziCatalog || []).length, offerte: offerte.length, dati: Object.keys(datiFissi).length } }];"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "16bbc2b9-954e-4a51-9e8e-b35f4f7c196f",
+      "name": "Elenco servizi",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        -640
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const data = $getWorkflowStaticData('global');\nconst servizi = Array.isArray(data.serviziCatalog) ? data.serviziCatalog : [];\nconst offerte = Array.isArray(data.offerteCatalog) ? data.offerteCatalog : [];\nconst df = data.datiFissi && typeof data.datiFissi === 'object' ? data.datiFissi : {};\nconst today = new Date().toISOString().slice(0, 10);\nconst offerteVive = offerte.filter(o => !o.valido_fino || o.valido_fino >= today || /esaurimento|fino a/i.test(String(o.valido_fino || '')));\nlet line = '';\nif (Object.keys(df).length) {\n  line += ' [DATI NEGOZIO DA FOGLIO: ' + Object.entries(df).map(([k, v]) => k + '=' + v).join('; ') + '. Usa SOLO questi valori per orari, indirizzo, telefono, email. Non usare orari a memoria.]';\n}\nif (servizi.length) {\n  line += ' [SERVIZI DA FOGLIO: ' + servizi.map(r => r.nome + (r.prezzo ? ' (' + r.prezzo + ')' : '')).join('; ') + '. Prenota SOLO questi. Se è in lista, lo effettuate.]';\n}\nif (offerteVive.length) {\n  line += ' [OFFERTE DA FOGLIO: ' + offerteVive.map(o => o.titolo + (o.prezzo_sconto ? ' ' + o.prezzo_sconto : '') + (o.valido_fino ? ' fino al ' + o.valido_fino : '')).join('; ') + '. Cita solo queste promo.]';\n} else {\n  line += ' [OFFERTE DA FOGLIO: nessuna promo attiva.]';\n}\nreturn [{ json: { serviziLine: line, servizi, offerte: offerteVive, datiFissi: df } }];"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "5361f018-bfe5-41e7-9037-2c4876a53e14",
+      "name": "Leggi Offerte foglio",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2128,
+        -880
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Offerte"
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "id": "d100742f-ba6e-4660-b473-a9b950ae357a",
+      "name": "Unisci Servizi Offerte",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2336,
+        -800
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      }
+    },
+    {
+      "id": "217f4405-c574-44d9-b5e6-0b37fd500276",
+      "name": "Leggi DatiFissi foglio",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2128,
+        -1040
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1Cisfepz44RSAvT5TazhXGqpY0lv6p7pJwWkbJS5dbo0",
+          "cachedResultName": "ArilùFarma · Gestionale bot"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "DatiFissi"
+        },
+        "options": {}
+      },
+      "disabled": false,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "id": "7fd76123-4eca-45aa-984a-adb5c8527892",
+      "name": "Normalizza risposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4208,
+        -256
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "let out = '';\ntry { out = String($('AI Agent').first().json.output || ''); } catch (e) {}\nout = String(out || '').replace(/\\*\\*/g, '').trim();\n\nif (!out) {\n  out = 'Mi scusi, non sono riuscito a rispondere. Può riscrivermi la richiesta in una riga?';\n}\nreturn [{ json: { output: out } }];"
+      },
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "id": "2806f089-0fa7-4224-bede-c90355fcfac9",
+      "name": "Messaggio duplicato?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        -368
+      ],
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
           },
-          "matchingColumns": ["wa_id"],
-          "schema": [],
-          "attemptToConvertTypes": false,
-          "convertFieldsToString": false
+          "conditions": [
+            {
+              "id": "dup-wamid",
+              "leftValue": "={{ $json.duplicate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
         },
+        "looseTypeValidation": true,
         "options": {}
       }
     },
     {
-      "name": "Nota",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [-520, -420],
+      "id": "bcb1b3ab-ae65-4404-af52-8a5d728b06c4",
+      "name": "Conferma veloce?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2784,
+        -256
+      ],
       "parameters": {
-        "width": 620,
-        "height": 140,
-        "content": "## Assistente WhatsApp ArilùFarma\nPrima di attivare: 1) crea le credenziali Google (Sheets + Calendar) e assegnale ai nodi Google; 2) compila il file `.env` sul VPS; 3) configura il webhook su Meta con l'URL di produzione `/webhook/whatsapp`.\nGuida completa: `chatbot/README.md` nel repository."
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "fast-confirm",
+              "leftValue": "={{ $('Stato prenotazione').first().json.fastConfirm }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      }
+    },
+    {
+      "id": "9e4a9262-26f4-4fa1-b9df-4c85586cbd00",
+      "name": "Conferma già fatta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3008,
+        -400
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "out1",
+              "name": "output",
+              "type": "string",
+              "value": "={{ $('Stato prenotazione').first().json.fastText || 'Sì, è confermato ✅' }}"
+            }
+          ]
+        },
+        "options": {}
       }
     }
   ],
   "connections": {
-    "Verifica webhook (GET)": {
+    "WhatsApp Trigger": {
       "main": [
         [
-          { "node": "Rispondi alla verifica", "type": "main", "index": 0 }
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Messaggi in arrivo (POST)": {
-      "main": [
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
         [
-          { "node": "Estrai messaggio", "type": "main", "index": 0 }
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
         ]
       ]
     },
-    "Estrai messaggio": {
-      "main": [
+    "Simple Memory": {
+      "ai_memory": [
         [
-          { "node": "È un messaggio utente?", "type": "main", "index": 0 }
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
         ]
       ]
     },
-    "È un messaggio utente?": {
+    "Prenota_appuntamento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Controlla_disponibilita": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva_prenotazione": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invia_informativa_privacy": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancella_appuntamento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggiorna_prenotazione": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva_richiesta_galenica": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "È un'immagine?": {
       "main": [
         [
-          { "node": "Registra messaggio", "type": "main", "index": 0 }
+          {
+            "node": "Ottieni URL media",
+            "type": "main",
+            "index": 0
+          }
         ],
-        []
-      ]
-    },
-    "Registra messaggio": {
-      "main": [
         [
-          { "node": "Leggi sessione", "type": "main", "index": 0 }
+          {
+            "node": "Conferma veloce?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Leggi sessione": {
+    "Ottieni URL media": {
       "main": [
         [
-          { "node": "Cervello del bot", "type": "main", "index": 0 }
+          {
+            "node": "Scarica immagine",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Cervello del bot": {
+    "Scarica immagine": {
       "main": [
         [
-          { "node": "Serve il calendario?", "type": "main", "index": 0 }
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Serve il calendario?": {
+    "Primo messaggio?": {
       "main": [
         [
-          { "node": "Eventi in agenda", "type": "main", "index": 0 }
+          {
+            "node": "Invia_informativa_privacy (auto)",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Che azione fare?", "type": "main", "index": 0 }
+          {
+            "node": "È un'immagine?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Eventi in agenda": {
+    "Invia_informativa_privacy (auto)": {
       "main": [
         [
-          { "node": "Filtra slot liberi", "type": "main", "index": 0 }
+          {
+            "node": "Segna privacy inviata",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Filtra slot liberi": {
+    "Segna privacy inviata": {
       "main": [
         [
-          { "node": "Prepara invii", "type": "main", "index": 0 }
+          {
+            "node": "È un'immagine?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Che azione fare?": {
+    "Consulta_dati_fissi": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta_listino": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sposta_appuntamento": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggiorna_prenotazione_per_id": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stato prenotazione": {
       "main": [
         [
-          { "node": "Crea evento in agenda", "type": "main", "index": 0 }
+          {
+            "node": "Primo messaggio?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log conversazione": {
+      "main": [
+        [
+          {
+            "node": "Consolida stato prenotazione",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consolida stato prenotazione": {
+      "main": [
+        [
+          {
+            "node": "Segna cliente visto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cliente gia visto?": {
+      "main": [
+        [
+          {
+            "node": "Controlla cache servizi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Controlla cache servizi": {
+      "main": [
+        [
+          {
+            "node": "Cache servizi valida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache servizi valida?": {
+      "main": [
+        [
+          {
+            "node": "Elenco servizi",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Salva richiesta galenica", "type": "main", "index": 0 }
+          {
+            "node": "Leggi Servizi foglio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leggi Offerte foglio",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leggi DatiFissi foglio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggiorna cache servizi": {
+      "main": [
+        [
+          {
+            "node": "Elenco servizi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elenco servizi": {
+      "main": [
+        [
+          {
+            "node": "Stato prenotazione",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leggi Servizi foglio": {
+      "main": [
+        [
+          {
+            "node": "Unisci Servizi Offerte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leggi Offerte foglio": {
+      "main": [
+        [
+          {
+            "node": "Unisci Servizi Offerte",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Unisci Servizi Offerte": {
+      "main": [
+        [
+          {
+            "node": "Aggiorna cache servizi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leggi DatiFissi foglio": {
+      "main": [
+        [
+          {
+            "node": "Unisci Servizi Offerte",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalizza risposta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizza risposta": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log conversazione",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conferma veloce?": {
+      "main": [
+        [
+          {
+            "node": "Conferma già fatta",
+            "type": "main",
+            "index": 0
+          }
         ],
         [
-          { "node": "Prepara invii", "type": "main", "index": 0 }
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Crea evento in agenda": {
+    "Conferma già fatta": {
       "main": [
         [
-          { "node": "Salva prenotazione", "type": "main", "index": 0 }
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log conversazione",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Salva prenotazione": {
+    "Filter": {
       "main": [
         [
-          { "node": "Prepara invii", "type": "main", "index": 0 }
+          {
+            "node": "Dedup messaggi e pulizia memoria",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Salva richiesta galenica": {
+    "Messaggio duplicato?": {
       "main": [
+        null,
         [
-          { "node": "Prepara invii", "type": "main", "index": 0 }
+          {
+            "node": "Cliente gia visto?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Prepara invii": {
+    "Dedup messaggi e pulizia memoria": {
       "main": [
         [
-          { "node": "Invia su WhatsApp", "type": "main", "index": 0 }
-        ]
-      ]
-    },
-    "Invia su WhatsApp": {
-      "main": [
-        [
-          { "node": "Aggiorna sessione", "type": "main", "index": 0 }
+          {
+            "node": "Messaggio duplicato?",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
-  "active": false,
   "settings": {
     "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
     "timezone": "Europe/Rome"
-  },
-  "pinData": {},
-  "meta": {
-    "templateCredsSetupCompleted": false
   }
 }

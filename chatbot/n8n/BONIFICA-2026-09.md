@@ -200,6 +200,44 @@ leggendo il codice:
 senza passare dall'agente, basandosi sulle stesse regex. Se lo stato interno
 è sbagliato, il cliente riceve una conferma falsa.
 
+## Verifica di tutto l'ecosistema — 3 settembre, pomeriggio
+
+Il titolare ha notato una scheda "lock" (colonne `wa_id`, `lock_time`) nel foglio
+Google Sheets del gestionale e ha chiesto di verificare se fosse la causa dei
+problemi. Non lo era: la scheda esiste ma **non è referenziata da nessun nodo
+di nessun workflow** — entrambe le celle `lock_time` sono vuote, non è mai
+stata scritta. È quasi certamente un primo tentativo di lock su foglio,
+abbandonato a favore di quello in-memory (il vero colpevole, smontato al
+punto 2 sopra).
+
+La verifica si è allargata a tutti i workflow n8n collegati ad ArilùFarma.
+Il server ne ospita 16 in totale; gli altri 9 appartengono a progetti non
+correlati e non sono stati toccati. Dei 7 di ArilùFarma:
+
+- **Consulta listino** (`Sld2FlyBwuEHKYsY`, attivo): pulito. Cache a 15 minuti
+  su `$getWorkflowStaticData`, usata correttamente — qui un mancato hit
+  occasionale causa solo una rilettura in più del foglio, mai un dato
+  sbagliato, a differenza del vecchio lock dove la stessa tecnica serviva per
+  un'esclusione reciproca che richiedeva atomicità vera.
+- **Alert errori** (`Dc19orzkbQ0CHPYg`, attivo): ben scritto ma **non
+  collegato**. Il workflow principale non lo designa come proprio "Error
+  Workflow" nelle impostazioni, quindi non scatta mai. Il connettore n8n
+  disponibile in questa sessione non espone un'operazione per impostare
+  `settings.errorWorkflow` a livello di workflow — va collegato a mano:
+  sul workflow principale, ☰ → Settings → Error Workflow → "ArilùFarma ·
+  Alert errori" → Save.
+- **Verifica e salva richiesta galenica** (`gOx6lRmSk5F8Uj6T`) e
+  **Promemoria appuntamenti** (`JfkB8E2vQS5KfwuE`): entrambi precedenti
+  all'episodio Grok (24 luglio), puliti, nessuna modifica necessaria.
+- **Manutenzione gestionale** e **Setup listino (una tantum)**: script
+  una-tantum già eseguiti con successo (valori incrociati e verificati
+  contro il foglio live), disattivati, ora archiviati. Il primo conteneva
+  una tabella cablata di 19 combinazioni nome+data di clienti reali — stesso
+  pattern del punto 1, ma innocuo perché lo script non gira più
+  automaticamente. Da non rieseguire: sui dati odierni non troverebbe
+  corrispondenze nella tabella cablata e rischierebbe di sovrascrivere
+  event_id validi con `'n/d'`.
+
 ## File in questa cartella
 
 | File | Contenuto |

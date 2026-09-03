@@ -184,6 +184,7 @@ try {
   }
 
   const incomingServizio = rawMsg ? findServizio(rawMsg) : '';
+  let freshBooking = false;
   if (incomingServizio && incomingServizio !== st.servizio && !ack && !isGreeting) {
     st.servizio = incomingServizio;
     st.giorno = '';
@@ -193,6 +194,7 @@ try {
     st.reminderAsked = false;
     st.booked = false;
     st.event_id = '';
+    freshBooking = true;
   } else if (newIntent) {
     st.confirmed = false;
     st.reminderAsked = false;
@@ -200,6 +202,7 @@ try {
     st.reminder = '';
     st.event_id = '';
     if (incomingServizio) st.servizio = incomingServizio;
+    freshBooking = true;
   }
   if (/\boggi\b/.test(lastUser)) st.giorno = weekdayRome(0);
   if (/\bdomani\b/.test(lastUser)) st.giorno = weekdayRome(1);
@@ -207,8 +210,14 @@ try {
   // Quando la prenotazione e' gia' salvata non si ri-estraggono i campi dal
   // testo: si conserva lo stato cosi' com'e'. (Qui c'era una riscrittura
   // cablata di giorno/ora per un cliente specifico: rimossa.)
+  //
+  // Quando invece parte una prenotazione NUOVA (cambio servizio o intento
+  // esplicito), l'ultimo messaggio del bot appartiene ancora alla prenotazione
+  // VECCHIA appena chiusa: se citava un giorno o un'ora, contaminerebbe quella
+  // nuova. In quel caso si legge solo cio' che il cliente ha scritto ORA.
   if (!(st.booked && !newIntent)) {
-    for (const text of botTexts.concat(clientTexts)) {
+    const textsToScan = freshBooking ? clientTexts : botTexts.concat(clientTexts);
+    for (const text of textsToScan) {
       const sv = findServizio(text);
       if (sv && !st.servizio) st.servizio = sv;
       const g = findGiorno(text); if (g) st.giorno = g;

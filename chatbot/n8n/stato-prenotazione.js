@@ -253,6 +253,14 @@ try {
     ? ('Sì, è confermato ✅\n' + [st.servizio, st.nome && ('per ' + st.nome), st.giorno, st.ora && ('alle ' + st.ora)].filter(Boolean).join(' ') + '.')
     : '';
 
+  // La decisione sul promemoria va SEMPRE riportata all'agente, altrimenti
+  // continua a richiederla a ogni messaggio (il prompt gli impone di chiederla
+  // prima di salvare) e la conversazione entra in un ciclo: il cliente
+  // risponde, lo stato registra la risposta, ma l'agente non la vede.
+  const remNote = st.reminder
+    ? ('Promemoria GIÀ deciso dal cliente: ' + st.reminder + '. NON richiederlo: salva con Promemoria=' + st.reminder + '.')
+    : (st.reminderAsked ? 'Promemoria già chiesto: attendi la risposta, non richiederlo.' : '');
+
   let note = '';
   if ((st.booked || st.event_id) && !newIntent) {
     if (isGreeting) {
@@ -261,7 +269,7 @@ try {
       note = ' [PRENOTAZIONE GIÀ SALVATA: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Citala SOLO se chiede conferma. Vietato citare altri clienti del calendario. VIETATO creare un secondo evento.]';
     }
   } else if (readyToBook && yes) {
-    note = ' [PRENOTAZIONE DA CONFERMARE: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Controlla_disponibilita prima. Se esiste già un evento con STESSO nome e orario, non crearne un altro.]';
+    note = ' [PRENOTAZIONE DA CONFERMARE: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. ' + (remNote ? remNote + ' ' : '') + 'Controlla_disponibilita prima. Se esiste già un evento con STESSO nome e orario, non crearne un altro.]';
   } else {
     const known = [];
     if (st.servizio) known.push(st.servizio);
@@ -270,6 +278,7 @@ try {
     if (st.nome) known.push(st.nome);
     const bits = [];
     if (known.length) bits.push('campi già detti: ' + known.join(', ') + '. Non ririchiederli.');
+    if (remNote) bits.push(remNote);
     if (!st.nome && st.servizio && st.giorno && st.ora) bits.push('Manca nome e cognome.');
     bits.push('Se ha detto OGGI il giorno è oggi, non sabato. Vietato citare nomi di altri clienti letti dal calendario.');
     note = ' [PRENOTAZIONE: ' + bits.join(' ') + ']';

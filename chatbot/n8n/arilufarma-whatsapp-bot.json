@@ -1670,17 +1670,6 @@
         ]
       ]
     },
-    "Filter": {
-      "main": [
-        [
-          {
-            "node": "Dedup messaggi e pulizia memoria",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Messaggio duplicato?": {
       "main": [
         null,
@@ -1698,6 +1687,17 @@
         [
           {
             "node": "Messaggio duplicato?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Dedup messaggi e pulizia memoria",
             "type": "main",
             "index": 0
           }

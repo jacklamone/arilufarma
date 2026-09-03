@@ -200,6 +200,45 @@ leggendo il codice:
 senza passare dall'agente, basandosi sulle stesse regex. Se lo stato interno
 è sbagliato, il cliente riceve una conferma falsa.
 
+## Errore mio: nodo di reset diventato permanente — causato e risolto in produzione
+
+Per far testare al titolare il bot "da cliente nuovo", ho inserito
+temporaneamente nel percorso reale (dopo `Filter`, prima di `Dedup
+messaggi e pulizia memoria`) un nodo che cancellava `data.booking`,
+`data.lastBot`, `data.known`, `data.lastWamid` per un numero specifico,
+prima di ogni altra logica. Un primo tentativo con esecuzione manuale
+(`execute_workflow` in modalità "manual") sembrava riuscito — la
+cancellazione veniva letta correttamente nella stessa esecuzione — ma le
+scritture fatte in modalità manuale **non vengono persistite** nello
+storage condiviso: solo le esecuzioni reali (webhook) scrivono in modo
+duraturo. Il messaggio di prova successivo ha ritrovato la vecchia
+prenotazione intatta, a conferma che il primo tentativo non aveva
+funzionato.
+
+Ho quindi innestato la stessa pulizia direttamente nel percorso reale,
+condizionata al numero di telefono specifico, e pubblicato. **Errore di
+progettazione**: il nodo non aveva alcuna condizione di "una tantum" — a
+ogni messaggio in arrivo da quel numero, cancellava di nuovo tutto prima
+che il resto della pipeline potesse leggerlo. Il primo messaggio dopo la
+pubblicazione ("Ciao") ha funzionato correttamente (reset e primo
+messaggio riconosciuti bene). Dal secondo messaggio in poi, il bot ha
+trattato OGNI messaggio come il primo: informativa privacy reinviata a
+ripetizione, nessuna prenotazione o contesto conservato tra un messaggio e
+l'altro, perché lo stato veniva azzerato prima di poter essere letto dal
+turno successivo.
+
+Rimosso il nodo entro ~3 minuti dalla segnalazione. Verificato con una
+lettura mirata (mai una scrittura) che lo stato per quel numero, dopo la
+rimozione, fosse pulito e coerente — nessuna prenotazione a metà, ultima
+risposta del bot correttamente registrata, flag "già visto" corretto
+(scritto da `Segna cliente visto`, a valle del nodo difettoso, quindi mai
+compromesso). Nessun danno residuo per altri numeri: la condizione
+`wa === TARGET_WA` rendeva il nodo trasparente per chiunque altro in
+tutto l'intervallo in cui è stato attivo.
+
+Nodi e connessioni verificati byte per byte identici allo stato precedente
+il test, prima di ripubblicare.
+
 ## Ramo che scavalca l'AI — risolto
 
 Ultimo punto dell'audit originale: `Conferma veloce?` → `Conferma già fatta`

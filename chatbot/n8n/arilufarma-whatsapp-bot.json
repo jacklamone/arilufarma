@@ -1257,63 +1257,6 @@
         "looseTypeValidation": true,
         "options": {}
       }
-    },
-    {
-      "id": "bcb1b3ab-ae65-4404-af52-8a5d728b06c4",
-      "name": "Conferma veloce?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        2784,
-        -256
-      ],
-      "parameters": {
-        "conditions": {
-          "combinator": "and",
-          "options": {
-            "version": 2,
-            "leftValue": "",
-            "caseSensitive": true,
-            "typeValidation": "loose"
-          },
-          "conditions": [
-            {
-              "id": "fast-confirm",
-              "leftValue": "={{ $('Stato prenotazione').first().json.fastConfirm }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
-            }
-          ]
-        },
-        "looseTypeValidation": true,
-        "options": {}
-      }
-    },
-    {
-      "id": "9e4a9262-26f4-4fa1-b9df-4c85586cbd00",
-      "name": "Conferma già fatta",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        3008,
-        -400
-      ],
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "out1",
-              "name": "output",
-              "type": "string",
-              "value": "={{ $('Stato prenotazione').first().json.fastText || 'Sì, è confermato ✅' }}"
-            }
-          ]
-        },
-        "options": {}
-      }
     }
   ],
   "connections": {
@@ -1438,7 +1381,7 @@
         ],
         [
           {
-            "node": "Conferma veloce?",
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }
@@ -1712,40 +1655,6 @@
       ]
     },
     "Normalizza risposta": {
-      "main": [
-        [
-          {
-            "node": "Send message",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Log conversazione",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Conferma veloce?": {
-      "main": [
-        [
-          {
-            "node": "Conferma già fatta",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "AI Agent",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Conferma già fatta": {
       "main": [
         [
           {

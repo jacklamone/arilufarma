@@ -200,6 +200,52 @@ leggendo il codice:
 senza passare dall'agente, basandosi sulle stesse regex. Se lo stato interno
 è sbagliato, il cliente riceve una conferma falsa.
 
+## Ramo che scavalca l'AI — risolto
+
+Ultimo punto dell'audit originale: `Conferma veloce?` → `Conferma già fatta`
+rispondeva con testo preconfezionato ("Sì, è confermato ✅ ...") quando il
+cliente chiedeva conferma di una prenotazione già `booked`, basandosi sulle
+stesse regex del nodo `Stato prenotazione`, senza mai passare dall'AI Agent.
+
+La verifica ha trovato un problema più serio di quello originariamente
+descritto. Mappando le connessioni:
+
+```
+Conferma già fatta → Send message + Log conversazione
+```
+
+Questo ramo bypassava **anche** `Consolida stato prenotazione` — l'unico
+nodo che scrive `data.lastBot[wa]`, la memoria di "cosa ha detto l'ultima
+volta il bot". Ogni volta che scattava questa scorciatoia, quella memoria
+non veniva aggiornata: al messaggio successivo `Stato prenotazione` ragionava
+su una risposta del bot più vecchia di quella appena inviata, con rischio di
+interpretare male una successiva risposta "sì/no" del cliente (es. sul
+promemoria) basandosi su un contesto superato.
+
+Prova concreta che il disallineamento non era una novità: dentro
+`Consolida stato prenotazione` esisteva un riferimento di fallback a
+`$('Conferma già fatta').first().json.output`, scritto per un collegamento
+che di fatto non esisteva — quel nodo non è mai stato raggiungibile da lì.
+Codice morto che tradiva l'inconsistenza.
+
+**Corretto rimuovendo interamente la scorciatoia**, non solo aggiustandone
+il contenuto: eliminati i nodi `Conferma veloce?` e `Conferma già fatta`,
+il ramo di `È un'immagine?` che vi confluiva ora va direttamente ad
+`AI Agent`. Il nodo `Stato prenotazione` genera comunque, per ogni
+messaggio, la nota `[PRENOTAZIONE GIÀ SALVATA: ... Citala SOLO se chiede
+conferma.]`: l'AI Agent può rispondere correttamente a "è confermato?"
+usando lo stesso stato, ma passando dal percorso normale — con verifica
+del linguaggio naturale e consolidamento della memoria intatti, invece di
+un template che non verificava nulla e disallineava la memoria del bot.
+
+Il riferimento morto in `Consolida stato prenotazione` è stato lasciato
+(non causa errori: è il terzo termine di un OR che in JavaScript va in
+corto circuito — non viene mai valutato perché il termine precedente,
+`$('Normalizza risposta').first().json.output`, è sempre valorizzato sul
+percorso ora unico). Verificato che nessun altro nodo referenziasse i due
+nodi rimossi prima di eliminarli. Applicato a bot disattivato, verificato
+sul codice live, poi riattivato.
+
 ## Nomi di clienti reali ancora nel prompt — risolto
 
 Il titolare ha segnalato che la scheda "lock" era stata aggiunta al foglio

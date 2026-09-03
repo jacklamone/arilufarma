@@ -200,6 +200,58 @@ leggendo il codice:
 senza passare dall'agente, basandosi sulle stesse regex. Se lo stato interno
 è sbagliato, il cliente riceve una conferma falsa.
 
+## Nomi di clienti reali ancora nel prompt — risolto
+
+Il titolare ha segnalato che la scheda "lock" era stata aggiunta al foglio
+circa due giorni prima, e ha chiesto di controllare se Grok avesse
+manipolato anche il prompt "su quel fronte". Verifica: nessuna manipolazione
+legata a lock/attese/concorrenza nel prompt — ma la verifica ha comunque
+trovato un problema reale, distinto, sullo stesso tema dei dati di clienti
+esposti senza necessità.
+
+Il nodo AI Agent ha due campi distinti: `options.systemMessage` (il prompt
+di sistema statico, 15.681 caratteri) e `text` (il template per-turno che
+assembla il messaggio umano con tutti i dati iniettati). I nomi di due
+clienti del calendario di test — usati come esempio in una regola di
+isolamento tra prenotazioni di clienti diversi — erano cablati in TRE punti,
+non uno:
+
+1. `AI Agent` → campo `text`: "Vietato citare Lucio Stolti, Antonio Profili
+   o altri nomi presi dal calendario o dagli esempi." — iniettato a ogni
+   singolo messaggio di ogni conversazione.
+2. Tool `Controlla_disponibilita` → `toolDescription`: "Non usare nomi
+   visti in calendario (Lucio Stolti, Antonio Profili, ecc.)..." — inviato a
+   OpenAI a ogni turno come parte dello schema dei tool disponibili, anche
+   quando il tool non viene chiamato.
+3. `AI Agent` → `systemMessage`, riga "COGNOME ≠ SERVIZIO": un esempio
+   didattico per insegnare che "Profili" è un cognome e non va confuso con
+   "Profilo Lipidico". Qui il nome non serviva a sopprimere un cliente
+   specifico ma a illustrare un pattern — however riusava per coincidenza
+   il nome esatto di un cliente reale del calendario.
+
+Il paradosso dei primi due: per dire all'agente di non nominare quei
+clienti, li si metteva davanti al modello a ogni messaggio — l'esatto
+contrario dell'obiettivo, oltre a mandare il nome di un cliente reale a un
+fornitore terzo (OpenAI) su ogni conversazione, senza alcun beneficio
+funzionale, per un'attività (parafarmacia) il cui stesso prompt tiene una
+sezione GDPR dedicata.
+
+**Corretto:**
+1. e 2. sostituiti con una formulazione generica ("Vietato citare nomi di
+   altri clienti presi dal calendario o dagli esempi." / "Non usare nomi
+   visti in calendario come se fossero di questo numero.") — stessa
+   protezione, senza esporre nomi specifici.
+3. l'esempio "Antonio Profili" rimosso mantenendo "Profili" (cognome nudo)
+   e "il mio cognome è profili" (pattern di frase), che coprono già
+   interamente lo stesso caso d'uso didattico senza bisogno del nome
+   completo.
+
+Verificato con una scansione di tutti i nodi del workflow che non restassero
+altre occorrenze, e che nessun altro tool o nodo contenesse pattern simili
+(lock, attese, nomi di clienti). Applicato a bot attivo — modifiche di solo
+testo statico, nessun codice eseguito, nessun rischio per l'esecuzione in
+corso.
+
 ## Verifica di tutto l'ecosistema — 3 settembre, pomeriggio
 
 Il titolare ha notato una scheda "lock" (colonne `wa_id`, `lock_time`) nel foglio

@@ -11,7 +11,7 @@ try {
   seenWa = String($('Cliente gia visto?').first().json.wa_id || '');
 } catch (e) {}
 
-const empty = { servizio: '', giorno: '', ora: '', nome: '', reminder: '', confirmed: false, reminderAsked: false, booked: false, event_id: '', ts: Date.now() };
+const empty = { servizio: '', giorno: '', ora: '', nome: '', reminder: '', confirmed: false, reminderAsked: false, booked: false, event_id: '', bookedDate: '', ts: Date.now() };
 
 function pack(note, st, fastConfirm, fastText) {
   return [{ json: { wa_id: seenWa, bookingLine: note || '', booking: st || empty, fastConfirm: !!fastConfirm, fastText: fastText || '' } }];
@@ -140,8 +140,40 @@ try {
     reminderAsked: !!prev.reminderAsked,
     booked: !!prev.booked || !!prev.event_id,
     event_id: prev.event_id || '',
+    bookedDate: prev.bookedDate || '',
     ts: now,
   };
+
+  // Una prenotazione salvata non puo' restare valida per sempre: finche' resta
+  // booked il blocco di estrazione piu' sotto non aggiorna i campi, e la
+  // conversazione resta congelata su quella prenotazione qualunque cosa scriva
+  // il cliente. Scade da sola quando il giorno dell'appuntamento e' passato.
+  // Gli stati salvati prima che esistesse bookedDate non sono databili: si
+  // azzerano al primo messaggio utile.
+  function ymdRome(offsetDays) {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const d = new Date(Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day)));
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  }
+  function dateForGiorno(giorno) {
+    for (let i = 0; i <= 6; i++) if (weekdayRome(i) === giorno) return ymdRome(i);
+    return '';
+  }
+  function clearBooking() {
+    st.servizio = '';
+    st.giorno = '';
+    st.ora = '';
+    st.nome = '';
+    st.reminder = '';
+    st.confirmed = false;
+    st.reminderAsked = false;
+    st.booked = false;
+    st.event_id = '';
+    st.bookedDate = '';
+  }
+  if (st.booked && (!st.bookedDate || st.bookedDate < ymdRome(0))) clearBooking();
 
   if (/\boggi\b/.test(lastUser)) {
     st.giorno = weekdayRome(0);
@@ -208,6 +240,11 @@ try {
     st.booked = true;
     st.confirmed = true;
   }
+
+  // Data dell'appuntamento, cosi' la prenotazione sa quando scadere. Se il
+  // giorno non e' noto vale oggi: scade stasera invece di restare per sempre.
+  if (st.booked && !st.bookedDate) st.bookedDate = dateForGiorno(st.giorno) || ymdRome(0);
+  if (!st.booked) st.bookedDate = '';
 
   data.booking[wa] = st;
 

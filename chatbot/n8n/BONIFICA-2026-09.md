@@ -94,6 +94,64 @@ Sorgenti dei nodi: `dedup-messaggi-pulizia-memoria.js`,
 Il workflow è passato da 45 a 41 nodi. I 13 tool dell'AI Agent sono stati
 verificati ancora tutti collegati.
 
+### 3. Stato di prenotazione congelato e mai scaduto — risolto
+
+Emerso provando il bot dal vivo dopo le prime due correzioni. Nella memoria
+persistente del workflow era rimasta, sul numero del titolare, una
+prenotazione fantasma:
+
+```
+servizio: "Vitamina D"   giorno: "lunedì"   ora: "09:00"
+nome: "<nome di un altro cliente>"   booked: true   confirmed: true
+```
+
+È lo stesso stato che il codice cablato di Grok riconosceva. Rimuovere quel
+codice non bastava: **questo è un dato**, salvato in
+`$getWorkflowStaticData`, e sopravvive intatto a qualunque modifica al
+codice.
+
+Conseguenze osservate in produzione:
+
+- Il bot era **congelato**. Quando una prenotazione risulta `booked`, il
+  blocco di estrazione non aggiorna i campi dal messaggio (comportamento
+  corretto in sé). Con uno stato fasullo bloccato su `booked: true`,
+  qualunque cosa scrivesse il cliente il servizio restava "Vitamina D".
+- A ogni messaggio l'agente riceveva la nota `[PRENOTAZIONE GIÀ SALVATA:
+  … <nome di un altro cliente>]`. Il nome non arrivava dal prompt di
+  sistema ma da questo dato.
+
+Sotto c'era un difetto strutturale che avrebbe colpito anche i clienti veri:
+**una prenotazione `booked` non scadeva mai.** Il campo `ts` si aggiorna a
+ogni messaggio, quindi la pulizia a 7 giorni non scattava finché la persona
+scriveva. Un cliente che prenota lunedì e torna dopo un mese sarebbe rimasto
+bloccato sulla vecchia prenotazione.
+
+**Correzione:** introdotto il campo `bookedDate`, la data dell'appuntamento
+calcolata dal giorno della settimana nel fuso di Roma.
+
+```js
+if (st.booked && (!st.bookedDate || st.bookedDate < ymdRome(0))) clearBooking();
+```
+
+- Una prenotazione scade da sola quando il suo giorno è passato.
+- Gli stati salvati prima che `bookedDate` esistesse non sono databili e
+  vengono azzerati al primo messaggio: è questo che ha ripulito da solo lo
+  stato lasciato da Grok, su tutti i numeri interessati.
+- Se il giorno non è noto, `bookedDate` vale oggi: scade in giornata anziché
+  restare per sempre.
+
+La logica di scadenza è stata verificata su cinque casi (stato legacy,
+prenotazione di oggi, futura, di ieri, nessuna prenotazione) prima di
+andare in produzione.
+
+### Non era una regressione
+
+Verificato: il congelamento non è stato introdotto dalle correzioni 1 e 2.
+Prima della correzione 1, con quello stato il codice entrava comunque nel
+ramo che non ri-estrae i campi — e in più riscriveva giorno e ora. Il
+blocco era identico. La correzione 1 ha rimosso la causa futura senza
+ripulire il dato già scritto; serviva questo terzo intervento.
+
 ## Cosa Grok ha fatto bene — da conservare
 
 **Il collegamento a Google Sheets funziona ed è un miglioramento reale.** I

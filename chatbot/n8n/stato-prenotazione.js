@@ -99,11 +99,22 @@ try {
   function findOra(text) {
     const t = norm(text);
     if (/siamo aperti|orari|lunedi.?venerdi/.test(t)) return '';
-    const m = t.match(/\b(?:alle?\s+)?(\d{1,2})(?:[:\.](\d{2}))?\b/);
-    if (!m) return '';
-    const h = Number(m[1]);
-    if (h < 7 || h > 20) return '';
-    return String(h).padStart(2, '0') + ':' + (m[2] || '00');
+    // Un numero fra 7 e 20 non basta da solo: "per mia figlia di 9 anni" non e'
+    // le 09:00. Si scandiscono tutti i numeri del messaggio e si scarta quello
+    // che ha davanti un'eta' ("di 9 anni") o dietro un'unita' che non e' un
+    // orario (anni, persone, euro, gocce...); il primo che sopravvive vince.
+    const re = /\b(?:alle?\s+)?(\d{1,2})(?:[:\.](\d{2}))?\b/g;
+    let m;
+    while ((m = re.exec(t))) {
+      const h = Number(m[1]);
+      if (h < 7 || h > 20) continue;
+      const before = t.slice(Math.max(0, m.index - 12), m.index);
+      const after = t.slice(m.index + m[0].length, m.index + m[0].length + 12);
+      if (/\b(di|ho|ha|abbiamo|hanno|compi[eo])\s*$/.test(before)) continue;
+      if (/^\s*(anni|anno|persone|volte|mesi|giorni|euro|kg|chili|cm|gradi|compresse|gocce|ml|mg)\b/.test(after)) continue;
+      return String(h).padStart(2, '0') + ':' + (m[2] || '00');
+    }
+    return '';
   }
   function findName(text) {
     const raw = String(text || '').trim();
@@ -113,6 +124,13 @@ try {
     if (/oggi|domani|detto|preferisco|libero|non sabato/.test(t)) return null;
     if (/grazie|prego|reminder|promemoria|conferma|va bene|prenot|servizio|glicem|sabato|alle |figlia|figlio/.test(t) && !/cognome|profili|mi chiamo/.test(t)) return null;
     const parts = raw.split(/\s+/).filter((p) => !/^(il|mio|cognome|è|e|mi|chiamo)$/i.test(p));
+    // Frasi comuni di due-tre parole, tutte lettere, non sono automaticamente
+    // un nome: "buona giornata", "come va" passavano il resto dei controlli e
+    // venivano registrate come nome del cliente. Si scarta la frase se
+    // contiene una di queste parole molto comuni, che non sono mai un nome o
+    // un cognome reale.
+    const NON_NAME_WORDS = new Set(['buona','buon','buonissima','giornata','serata','settimana','nottata','notte','bene','tutto','niente','presto','subito','chiaro','scusi','scusa','dai','ecco','come','va','cosa','ancora','molto','davvero','veramente']);
+    if (parts.some((p) => NON_NAME_WORDS.has(norm(p)))) return null;
     if (/\bprofili\b/.test(t) || /cognome|mi chiamo/.test(t)) {
       if (parts.length >= 2) return parts.map(cap).join(' ');
       return cap(parts[parts.length - 1] || '');

@@ -200,6 +200,37 @@ leggendo il codice:
 senza passare dall'agente, basandosi sulle stesse regex. Se lo stato interno
 è sbagliato, il cliente riceve una conferma falsa.
 
+## Punto 3 — parser italiano a regex — risolto
+
+Ultimo punto dell'audit originale rimasto aperto. Due difetti concreti nel
+nodo `Stato prenotazione`:
+
+- `findOra` prendeva qualsiasi numero fra 7 e 20 nel messaggio, senza
+  contesto: "per mia figlia di 9 anni" diventava un orario delle 09:00.
+- `findName` accettava qualsiasi frase di 2-3 parole di sole lettere che
+  non fosse un servizio o un giorno noto: "buona giornata" o "come va"
+  diventavano il nome del cliente.
+
+**`findOra` corretto** scandendo tutti i numeri del messaggio (non solo il
+primo) e scartando quelli con un'età davanti ("di 9 anni", "ho 15 anni") o
+un'unità dietro che non è un orario (persone, euro, gocce, compresse,
+mesi...). Il primo numero che sopravvive ai due controlli vince.
+
+**`findName` corretto** con un elenco di parole italiane molto comuni
+(saluti, cortesie, avverbi come "buona", "giornata", "come", "va", "bene")
+che scartano la frase se anche una sola compare fra le parole candidate —
+invece di provare a enumerare ogni possibile frase di cortesia, si scarta
+in base alle parole che la compongono.
+
+Verificato eseguendo le VERE funzioni del file (non una trascrizione a
+mano) estratte ed eseguite in isolamento: 7 casi che dovevano rompersi
+(gli esempi dell'audit) tutti corretti, 13 casi reali della giornata
+(orari, giorni, nomi, servizi visti nelle conversazioni di test) tutti
+invariati. Rieseguiti anche i due scenari end-to-end completi già usati
+in precedenza (prenotazione normale a più messaggi, contaminazione fra
+prenotazioni diverse): nessuna regressione. Applicato a bot disattivato,
+verificato sul codice live, poi riattivato.
+
 ## Errore mio: nodo di reset diventato permanente — causato e risolto in produzione
 
 Per far testare al titolare il bot "da cliente nuovo", ho inserito

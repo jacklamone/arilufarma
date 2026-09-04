@@ -566,6 +566,44 @@ precedenza ("spazzolini elettrici", "oral b", "creme viso", "testine di
 ricambio") senza regressioni. Pubblicato con lo stesso protocollo unpublish
 → edit → verifica su bozza → publish.
 
+## "Batteria?" dopo un confronto tra prodotti: il bot chiede di nuovo il nome (4 settembre)
+
+Test del titolare subito dopo il fix "parola intera" sul listino: chiesto
+"Differenze tra pro 1 e pro 3?" (risposta corretta, confronto e caratteristiche
+tecniche grazie all'eccezione del punto precedente), poi "Batteria?" — il bot
+ha risposto "Intende una batteria per un dispositivo specifico...?" invece di
+riferirsi ai due spazzolini appena discussi. Alla richiesta più esplicita
+"Tra i due spazzolini a confronto quale è la durata della batteria" ha
+rifatto lo stesso errore, chiedendo di nuovo i nomi o una foto.
+
+**Verificato PRIMA di ipotizzare un bug di memoria**, come da prassi di
+questa bonifica: recuperato dai log reali il contenuto esatto passato al
+modello (nodo "Simple Memory") nel momento in cui ha ricevuto "Batteria?".
+La cronologia conteneva 20 messaggi, e includeva PER INTERO lo scambio
+immediatamente precedente su "Differenze tra pro 1 e pro 3?", con entrambi i
+prodotti nominati esplicitamente dal bot due messaggi prima. **Non è quindi
+un problema di memoria/contesto tecnico** (contextWindowLength del nodo
+Simple Memory è 12, la cronologia era completa e correttamente presente): il
+modello aveva il dato davanti e non l'ha usato per collegare la domanda
+ellittica ("Batteria?") ai prodotti appena discussi.
+
+**Fix (nodo "AI Agent", `options.systemMessage`):** aggiunta un'istruzione
+esplicita in due punti — in TONO (regola generale) e in LISTINO (caso
+specifico) — che impone di riferire SEMPRE una domanda breve o ellittica
+("batteria?", "prezzo?", "quale dura di più?", "tra i due...") ai
+prodotti/servizi che il bot stesso ha appena nominato nel messaggio
+precedente, controllando la cronologia immediatamente sopra prima di
+richiedere di nuovo il nome. Stessa tecnica già usata per il salto del
+promemoria: non un problema deterministico risolvibile nel codice, ma
+un'istruzione esplicita che riduce la probabilità che il modello lo ignori.
+
+Pubblicato con protocollo unpublish → edit → verifica su bozza → publish.
+**Non ancora verificato in una conversazione reale successiva** (a differenza
+degli altri fix di oggi, qui non è possibile un test offline: è
+comportamento del modello, non logica deterministica) — da confermare al
+prossimo test del titolare con un follow-up breve dopo aver nominato dei
+prodotti.
+
 ## File in questa cartella
 
 | File | Contenuto |

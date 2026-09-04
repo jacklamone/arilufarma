@@ -307,6 +307,14 @@ try {
     if (known.length) bits.push('campi già detti: ' + known.join(', ') + '. Non ririchiederli.');
     if (remNote) bits.push(remNote);
     if (!st.nome && st.servizio && st.giorno && st.ora) bits.push('Manca nome e cognome.');
+    // Con tutti i campi noti ma promemoria non ancora chiesto, l'agente a
+    // volte salta la domanda e prenota subito (osservato in produzione:
+    // stesso stato, stessa nota, in un caso ha chiesto il promemoria e
+    // nell'altro no). La nota deve imporlo esplicitamente, non bastare
+    // sull'istruzione generica nel system prompt.
+    if (!remNote && st.servizio && st.giorno && st.ora && st.nome) {
+      bits.push('Tutti i dati sono completi: prima di salvare o chiedere conferma, chiedi ORA se vuole il promemoria WhatsApp il giorno prima (sì/no). Vietato salvare senza aver chiesto il promemoria.');
+    }
     bits.push('Se ha detto OGGI il giorno è oggi, non sabato. Vietato citare nomi di altri clienti letti dal calendario.');
     note = ' [PRENOTAZIONE: ' + bits.join(' ') + ']';
   }

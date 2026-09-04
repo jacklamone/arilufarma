@@ -406,6 +406,54 @@ correlati e non sono stati toccati. Dei 7 di ArilùFarma:
   corrispondenze nella tabella cablata e rischierebbe di sovrascrivere
   event_id validi con `'n/d'`.
 
+## Promemoria saltato prima della conferma (4 settembre)
+
+Test live del titolare: prenotazione Glicemia per "Angelo Fonte", tutti i
+campi noti (servizio, giorno, ora, nome). Invece di chiedere il promemoria,
+l'AI Agent ha chiamato direttamente `Controlla_disponibilita` e
+`Salva_prenotazione`, saltando la domanda obbligatoria.
+
+**Verifica con i dati reali (non a naso):** confrontate due esecuzioni con
+uno stato IDENTICO (tutti i campi noti, `reminderAsked:false`,
+`reminder:''`) — stessa nota `bookingLine` inviata all'agente in entrambi i
+casi:
+- Esecuzione `59926` (Glicemia, "Angelo Fonte"): l'agente NON ha chiesto il
+  promemoria ed è passato subito alla prenotazione.
+- Esecuzione `60098` (Foro lobi, stesso cliente, ~40 minuti dopo): con la
+  stessa identica nota, l'agente HA chiesto correttamente "Vuole ricevere
+  un promemoria su WhatsApp il giorno prima? (Sì/No)".
+
+Quindi non è un bug deterministico del codice: è un'istruzione che vive solo
+nel system prompt generale ("chiedi il promemoria prima di salvare") e che il
+modello, in un caso su due, non rispetta perché la nota di stato
+(`Stato prenotazione`) non la ripete esplicitamente in quel turno — a
+differenza di ogni altro caso limite (prenotazione già salvata, prenotazione
+da confermare, promemoria già deciso), che invece hanno tutti un'istruzione
+imperativa dedicata nella nota.
+
+**Fix:** in `stato-prenotazione.js`, quando servizio+giorno+ora+nome sono
+tutti noti ma il promemoria non è stato né chiesto né deciso, la nota ora
+aggiunge esplicitamente: "Tutti i dati sono completi: prima di salvare o
+chiedere conferma, chiedi ORA se vuole il promemoria WhatsApp il giorno
+prima (sì/no). Vietato salvare senza aver chiesto il promemoria."
+
+Verificato prima del deploy: script che rigioca lo stato esatto
+dell'esecuzione `59926` contro il file corretto conferma che la nota ora
+contiene l'istruzione; rieseguiti anche `scenario.json`/`scenario2.json`
+(harness esistente) senza regressioni. Pubblicato su n8n con protocollo
+unpublish → edit → verifica su bozza → publish.
+
+**Nota collaterale, non un bug:** nello stesso screenshot il titolare ha
+notato "venerdì 5 settembre" poi corretto in "venerdì 4 settembre". Nei log
+reali di quella conversazione (esecuzioni 59918→59929) il bot ha sempre
+detto "venerdì 4 settembre", mai il 5 — la data del 5 compare solo dentro
+gli eventi calendario di ALTRI clienti restituiti da `Controlla_disponibilita`
+(che elenca tutti gli appuntamenti dei prossimi 14 giorni, non solo quello
+richiesto). Il "5 settembre" visto dal titolare è quasi certamente un
+messaggio precedente, non generato da questo scambio: nessuna correzione di
+codice fatta su questo punto, da tenere d'occhio se si ripresenta con nuovi
+log a supporto.
+
 ## File in questa cartella
 
 | File | Contenuto |

@@ -677,6 +677,56 @@ Pubblicato con protocollo unpublish → edit → verifica su bozza → publish.
 Come per il fix del "Batteria?", non testabile offline (comportamento del
 modello, non logica deterministica): da confermare al prossimo test reale.
 
+## Reset automatico del numero di test ogni 4 ore (4 settembre)
+
+Richiesta del titolare: i test vengono fatti quasi sempre dallo stesso numero
+(+393403063950), che quindi accumula per sempre lo storico di conversazioni
+e prenotazioni di tutte le sessioni di test — è proprio questo accumulo ad
+aver causato il bug precedente ("ne avete altri?" rispondeva con prodotti di
+un argomento di test precedente non correlato). Per rendere i test più
+realistici (ogni ciclo come un cliente davvero nuovo) e ridurre il rischio
+di questo tipo di contaminazione tra sessioni di test diverse, la memoria di
+quel singolo numero si azzera ora da sola ogni 4 ore.
+
+**Cosa viene azzerato, solo per +393403063950:**
+- Lo stato prenotazione/conversazione salvato nel workflow (`data.booking`,
+  `data.lastBot`, `data.known`, `data.lastWamid` in
+  `$getWorkflowStaticData`) — nodo Code "Azzera stato prenotazione numero
+  test" (sorgente in `reset-numero-test.js`). Azzerare `data.known` fa sì
+  che il numero torni "nuovo cliente" anche per il messaggio di benvenuto e
+  l'informativa privacy.
+- La memoria conversazionale dell'AI Agent (cronologia LangChain) — nodo
+  "Azzera memoria chat numero test" (`@n8n/n8n-nodes-langchain.memoryManager`,
+  modalità delete/all), collegato a un secondo nodo "Simple Memory" dedicato
+  con la stessa sessionKey fissa `393403063950` (lo stesso meccanismo di
+  condivisione usato tra i nodi "Simple Memory" e "AI Agent" esistenti: la
+  memoria è condivisa per valore di sessionKey, non per nodo).
+
+Entrambi partono da un nuovo Schedule Trigger ("Reset memoria test ogni
+4h"), branch indipendente che non tocca in alcun modo il percorso reale dei
+messaggi WhatsApp dei clienti.
+
+**Verificato prima di pubblicare:** eseguito con `test_workflow` partendo
+da questo trigger — entrambi i rami hanno azzerato correttamente (risposta
+`cleared: [booking, lastBot, known, lastWamid]` e `success: true`). Un
+avviso di validazione sul nodo memoryManager ("subnode not connected") è un
+falso positivo del validatore generico, non riconosce che questo nodo può
+essere sia un nodo di flusso normale sia un consumatore di un subnode
+memoria — l'esecuzione reale ha confermato che funziona. Pubblicato con
+protocollo unpublish → edit → verifica → publish (verifica qui fatta con
+`test_workflow` invece della sola lettura della bozza, dato che va provato
+in esecuzione, non solo letto).
+
+**Scelta della frequenza:** 4 ore, decisa col titolare — abbastanza spesso
+da separare sessioni di test ravvicinate ma su argomenti diversi nello
+stesso giorno, senza azzerare a metà di un test in corso nel giro di
+pochi minuti.
+
+**Non toccato:** il secondo numero di test menzionato dal titolare — la
+richiesta esplicita era "almeno con il mio numero" (+393403063950). Se
+serve estendere il reset anche all'altro numero, va solo aggiunto un altro
+wa_id nello stesso nodo Code.
+
 ## File in questa cartella
 
 | File | Contenuto |

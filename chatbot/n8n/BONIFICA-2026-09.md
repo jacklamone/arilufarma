@@ -604,6 +604,41 @@ comportamento del modello, non logica deterministica) — da confermare al
 prossimo test del titolare con un follow-up breve dopo aver nominato dei
 prodotti.
 
+## Riordino categoria sheet Prodotti (4 settembre)
+
+Segnalazione del titolare: la scheda `Prodotti` del gestionale mescola senza
+criterio farmaci da banco, spazzolini Oral-B e intere linee di cosmesi
+(Caudalie, ISDIN), e la colonna `categoria` stessa è incoerente — a volte
+un'etichetta singola ("Dolore", "Viso"), a volte "marca - linea - formato"
+("Caudalie - Vinoperfect (schiarente) - 30 ml"), a volte
+"categoria - principio attivo - confezione" ("Dolore/febbre - Paracetamolo -
+10 supposte 1000mg"). Confermato controllando tutte le 119 righe.
+
+**Decisione presa col titolare:** restare su un'unica scheda (niente schede
+separate per genere, che avrebbero richiesto ampliare il sub-workflow
+"Consulta listino" con nuovi nodi di lettura ad ogni categoria aggiunta,
+visto che il bot già cerca su tutte le righe come un pool unico — dividere
+in più schede non gli avrebbe dato nessun vantaggio di ricerca, solo più
+manutenzione), ma pulire la colonna `categoria` con 7 etichette coerenti:
+Farmaco da banco, Igiene orale, Cosmesi viso, Cosmesi corpo, Solare,
+Integratore, Marca. Il dettaglio marca/linea/formato che stava nella vecchia
+categoria è stato spostato in coda a `note`, non perso.
+
+**Esecuzione:** creato uno script n8n una tantum
+("ArilùFarma · Riordino categoria Prodotti", stesso pattern delle bonifiche
+precedenti — creato, eseguito una volta con successo su tutte le 119 righe
+confermato dalla risposta dell'API Google Sheets, poi archiviato) invece di
+modificare le celle a mano. Tabella completa vecchia→nuova categoria salvata
+in `riordino-categoria-prodotti-2026-09-04.md`, incluse le righe borderline
+(soprattutto viso/corpo nelle linee Caudalie/ISDIN) segnalate per una
+verifica del titolare, che di farmacia se ne intende più di me.
+
+**Nota tecnica:** il sub-workflow "Consulta listino" mette in cache i dati
+per 15 minuti (`$getWorkflowStaticData`): un test del bot fatto entro 15
+minuti da una query precedente potrebbe ancora mostrare la vecchia
+categoria fino allo scadere della cache. Non serve nessuna azione, si
+autorisolve.
+
 ## File in questa cartella
 
 | File | Contenuto |

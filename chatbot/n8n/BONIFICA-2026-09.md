@@ -496,6 +496,40 @@ aggiungere se si vuole che il bot risponda su specifiche tecniche vere, (b)
 un'incoerenza di memoria conversazionale dell'AI Agent su cui servirebbe più
 segnale reale prima di intervenire (osservato una sola volta finora).
 
+## Caratteristiche tecniche prodotti: eccezione controllata alla regola anti-invenzione (4 settembre)
+
+Richiesta esplicita del titolare: quando il bot riconosce un prodotto di
+marca reale (es. "Oral-B CrossAction"), vuole che usi la propria conoscenza
+generale per descriverne le caratteristiche tecniche e confrontarlo con
+altri modelli — non solo i dati (incompleti) del gestionale.
+
+**Perché non è stata una modifica automatica.** Il prompt dell'AI Agent ha
+una regola esplicita, scritta in cima a tutte le altre: "non inventare MAI
+nulla — disponibilità, prodotti, prezzi, orari...". È lì apposta, per lo
+stesso motivo per cui questa bonifica esiste (i danni della gestione
+precedente). Allargarla senza delimitarla avrebbe riaperto lo stesso rischio.
+Ho proposto al titolare due opzioni delimitate (solo specifiche tecniche con
+avviso, oppure anche confronti/consigli più ampi tra prodotti) e lui ha
+scelto la seconda.
+
+**Fix (nodo "AI Agent", `options.systemMessage`):**
+- Aggiunta un'ECCEZIONE esplicita alla regola anti-invenzione, in coda alla
+  regola stessa: vale SOLO per caratteristiche tecniche e confronti tra
+  prodotti di marca reali (riconosciuti dal cliente o trovati da
+  Consulta_listino). Impone SEMPRE una frase che chiarisce sono info
+  generali da confermare in negozio. Esplicitamente NON estesa a prezzo,
+  disponibilità a scorta, presenza a listino (quelli restano solo dal
+  gestionale) né a farmaci/integratori/dosaggi/posologie/consigli di
+  salute — quella parte della regola resta blindata come prima.
+- Aggiunta una riga nella sezione LISTINO che rimanda a questa eccezione nel
+  punto in cui il bot risponde su un prodotto.
+
+Verificato che il testo sia stato salvato sul nodo prima di pubblicare
+(protocollo unpublish → edit → verifica su bozza → publish). Non ancora
+testato in una conversazione reale: da verificare al prossimo test del
+titolare che questa risposta sia effettivamente più completa mantenendo
+l'avviso e senza toccare prezzo/disponibilità.
+
 ## File in questa cartella
 
 | File | Contenuto |

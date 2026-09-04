@@ -454,6 +454,48 @@ messaggio precedente, non generato da questo scambio: nessuna correzione di
 codice fatta su questo punto, da tenere d'occhio se si ripresenta con nuovi
 log a supporto.
 
+## "Spazzolini elettrici" non trovati a listino, pur essendoci (4 settembre)
+
+Segnalazione del titolare: chiedendo al bot "spazzolini elettrici" (plurale),
+risposta "Non risultano spazzolini elettrici a listino" — ma nello sheet
+`Prodotti` ci sono 19 spazzolini elettrici Oral-B. Chiedendo invece "Oral-B"
+o "spazzolino elettrico" (singolare) il bot li trovava.
+
+**Causa verificata sui dati reali** (workflow separato `ArilùFarma · Consulta
+listino`, ID `Sld2FlyBwuEHKYsY`, il sub-workflow/tool che il bot usa per
+interrogare `Prodotti`/`Galenici`/`Servizi`/`Offerte`): il nodo `Filtra
+corrispondenze` cerca per sottostringa pura, senza alcuna gestione di
+singolare/plurale. Le righe del prodotto hanno `categoria` = "Oral-B -
+Spazzolino elettrico - ..." (singolare); la query del cliente era "spazzolini
+elettrici" (plurale). "spazzolini" non è una sottostringa di "spazzolino" né
+viceversa (divergono sull'ultima lettera), quindi zero corrispondenze — pur
+essendoci 19 righe pertinenti nello sheet. Confermato eseguendo la ricerca
+reale contro il dump delle righe usato in quell'esecuzione.
+
+**Fix:** aggiunta una "stemmatura" leggera per l'italiano — nel confronto per
+sottostringa, ai token di ricerca di almeno 5 lettere si toglie la vocale
+finale prima di cercarli nel nome/categoria del prodotto ("spazzolini" →
+"spazzolin", che è sottostringa sia di "spazzolini" che di "spazzolino").
+Verificato offline contro un dump reale delle righe di `Prodotti`: la query
+"spazzolini elettrici" ora restituisce le stesse 19 righe di "spazzolino
+elettrico"; nessuna variazione sui casi già funzionanti (nomi esatti, Oral-B,
+Caudalie, ecc.). Pubblicato con lo stesso protocollo unpublish → edit →
+verifica su bozza → publish.
+
+**Nota collaterale, non risolta — "le specifiche tecniche si incasinano":**
+lo sheet `Prodotti` NON ha una colonna di specifiche tecniche reali (durata
+batteria, modalità di spazzolamento, sensore di pressione, ecc.): la colonna
+`categoria` contiene solo la composizione della confezione ("1 spazzolino +
+1 testina", "spazzolino + custodia"). Quando il titolare ha chiesto "dettagli
+tecnici" su Oral-B Pro 2 vs Pro 3, il bot non aveva quei dati da restituire
+E ha anche perso il filo di quali due prodotti si stesse parlando (ha
+richiesto di nuovo "a quale prodotto si riferisce" invece di riusare il
+contesto dei 2 messaggi precedenti). Questo non è stato corretto in questa
+sessione: sono due problemi distinti — (a) dato mancante nel gestionale, da
+aggiungere se si vuole che il bot risponda su specifiche tecniche vere, (b)
+un'incoerenza di memoria conversazionale dell'AI Agent su cui servirebbe più
+segnale reale prima di intervenire (osservato una sola volta finora).
+
 ## File in questa cartella
 
 | File | Contenuto |
@@ -462,5 +504,9 @@ log a supporto.
 | `stato-prenotazione.js` | sorgente del nodo Code `Stato prenotazione` |
 | `dedup-messaggi-pulizia-memoria.js` | sorgente del nodo Code omonimo |
 | `segna-cliente-visto.js` | sorgente del nodo Code omonimo |
-| `arilufarma-consulta-listino.json` | sub-workflow del listino |
+| `consulta-listino-filtra-corrispondenze.js` | sorgente del nodo Code `Filtra corrispondenze` del sub-workflow `ArilùFarma · Consulta listino` (ID `Sld2FlyBwuEHKYsY`) |
 | `arilufarma-reminder.json` | workflow dei promemoria |
+
+Nota: `arilufarma-consulta-listino.json` era elencato qui ma non è mai stato
+effettivamente esportato nel repo — solo il singolo nodo Code rilevante
+(`consulta-listino-filtra-corrispondenze.js`, sopra) è stato salvato finora.

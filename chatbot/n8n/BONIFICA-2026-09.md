@@ -530,6 +530,42 @@ testato in una conversazione reale: da verificare al prossimo test del
 titolare che questa risposta sia effettivamente più completa mantenendo
 l'avviso e senza toccare prezzo/disponibilità.
 
+## "Differenze tra pro 1 e pro3?" non trovava i prodotti, anche dopo il fix precedente (4 settembre)
+
+Test del titolare subito dopo l'aggiunta dell'eccezione per le specifiche
+tecniche: chiesto "quali elettrici avete" (risposta corretta, elenco
+completo grazie al fix precedente), poi "Differenze tra pro 1 e pro3?" — il
+bot ha risposto "Non riesco a capire a quali 'Pro 1' e 'Pro 3' si riferisca
+dal listino. Mi scrive il nome completo del prodotto o il marchio?", pur
+avendo appena elencato lui stesso "Pro 1" e "Pro 3" nel messaggio precedente.
+
+**Causa verificata sui dati reali** (esecuzione del sub-workflow "Consulta
+listino" collegata alla conversazione): l'AI Agent ha chiamato
+`Consulta_listino` con `Query: "pro 1 pro3"`. Il motore di ricerca cercava
+per SOTTOSTRINGA libera (anche dopo il fix del 4/9 sul singolare/plurale):
+il token "pro" (3 lettere) risultava contenuto non solo nei veri prodotti
+Oral-B "Pro" ma anche in parole completamente estranee che lo contengono per
+caso — "Vino**pro**tect", "Foto**pro**tector" (creme solari Caudalie/ISDIN),
+"**Pro**ctolyn" (crema emorroidi). Con oltre 15 righe a punteggio identico,
+i risultati sono limitati a 8: le creme solari e la crema emorroidi
+comparse PRIMA nel foglio Prodotti hanno riempito tutti gli 8 posti,
+espellendo dai risultati sia "Oral-B Pro 1" che "Oral-B Pro 3".
+
+**Fix:** il confronto ora richiede che il token di ricerca corrisponda a una
+PAROLA INTERA (dopo la stessa stemmatura singolare/plurale) nel nome o nella
+categoria del prodotto, non più a una sottostringa libera ovunque nel testo.
+"pro" trova così la parola "pro" (es. in "Pro-Expert", "Pro 1", "Pro 3") ma
+non più "protect" o "proctolyn", che non sono la parola "pro" ma parole
+diverse che iniziano per caso con le stesse tre lettere.
+
+Verificato offline contro l'intero catalogo reale di `Prodotti` (120 righe):
+la query "pro 1 pro3" ora restituisce tutti gli 8 prodotti Oral-B della
+linea Pro, inclusi Pro 1 e Pro 3, zero falsi positivi da Vinosun/
+Fotoprotector/Proctolyn; riverificate anche le query già corrette in
+precedenza ("spazzolini elettrici", "oral b", "creme viso", "testine di
+ricambio") senza regressioni. Pubblicato con lo stesso protocollo unpublish
+→ edit → verifica su bozza → publish.
+
 ## File in questa cartella
 
 | File | Contenuto |

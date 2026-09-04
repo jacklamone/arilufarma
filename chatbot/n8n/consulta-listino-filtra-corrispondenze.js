@@ -7,25 +7,29 @@ const stop = new Set(['per','una','uno','che','con','del','della','dei','delle',
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 const nq = norm(q);
 const tokens = nq.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stop.has(t));
-// Stem leggero per l'italiano: toglie la vocale finale ai token di almeno 5
-// lettere prima del confronto per sottostringa. Senza questo, una query al
-// plurale ("spazzolini elettrici") non trovava mai le righe scritte al
-// singolare in categoria ("Spazzolino elettrico"), perche' "spazzolini" non
-// e' una sottostringa di "spazzolino" ne' viceversa. Osservato in produzione:
-// il cliente chiedeva spazzolini elettrici, presenti a listino, e il bot
-// rispondeva che non risultavano.
+// Stem leggero per l'italiano: toglie la vocale finale ai token/parole di
+// almeno 5 lettere prima del confronto, cosi' "spazzolini" (query, plurale)
+// trova "spazzolino" (scheda prodotto, singolare) e viceversa.
 function stem(t) { return t.length > 4 && /[aeiou]$/.test(t) ? t.slice(0, -1) : t; }
+function words(s) { return norm(s).split(/[^a-z0-9]+/).filter(Boolean); }
 function score(row) {
-  const nome = norm(row.nome || '');
-  const extra = norm([row.categoria, row.note, row.descrizione, row.titolo].filter(Boolean).join(' '));
+  const nomeNorm = norm(row.nome || '');
   if (!nq) return 1;
-  if (nome === nq) return 100;
-  if (nome.includes(nq) || (nome && nq.includes(nome))) return 90;
+  if (nomeNorm === nq) return 100;
+  if (nomeNorm.includes(nq) || (nomeNorm && nq.includes(nomeNorm))) return 90;
+  // Confronto a PAROLA INTERA (stem esatto), non a sottostringa libera: con
+  // la sottostringa libera un token corto come "pro" (da "Pro 1"/"Pro 3")
+  // agganciava anche parole non correlate che lo contengono per caso, es.
+  // "Vinosun PROtect" o "PROctolyn" - risultati che riempivano gli 8 posti
+  // disponibili ed espellevano i veri Oral-B Pro 1 / Pro 3 dai risultati.
+  // Osservato in produzione su "differenze tra pro 1 e pro3".
+  const nomeStems = words(row.nome).map(stem);
+  const extraStems = words([row.categoria, row.note, row.descrizione, row.titolo].filter(Boolean).join(' ')).map(stem);
   let hits = 0;
   for (const t of tokens) {
     const st = stem(t);
-    if (nome.includes(st)) hits += 2;
-    else if (extra.includes(st)) hits += 1;
+    if (nomeStems.includes(st)) hits += 2;
+    else if (extraStems.includes(st)) hits += 1;
   }
   if (!hits) return 0;
   return 15 + hits * 20;

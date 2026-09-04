@@ -639,6 +639,44 @@ minuti da una query precedente potrebbe ancora mostrare la vecchia
 categoria fino allo scadere della cache. Non serve nessuna azione, si
 autorisolve.
 
+## "Ne avete altri?" risponde con prodotti a caso (4 settembre)
+
+Test del titolare: "Avete spazzolino?" → risposta corretta (solo Oral-B,
+grazie al riordino categoria di poco prima). Poi "Sì grazie, mi dice anche
+se ne avete altri" → il bot ha risposto con Armolipid, Vicks Sinex, Crema
+Caudalie, Listerine, Normolip: un farmaco, uno spray nasale, due creme e un
+collutorio, niente a che vedere con gli spazzolini appena discussi.
+
+**Verificato sui log reali PRIMA di sospettare il riordino categoria appena
+fatto** (che invece ha funzionato perfettamente): la chiamata
+`Consulta_listino` per "spazzolino" nel primo turno ha restituito
+esattamente e solo gli 8 prodotti Oral-B pertinenti, nessun farmaco o crema
+mischiato — la ricerca è pulita. Il problema è nel turno successivo: per
+"mi dice anche se ne avete altri", l'AI Agent ha fatto **zero chiamate a
+Consulta_listino** (confermato da `tool_calls.completed: 0` nei log) e ha
+risposto citando prodotti che stavano nella cronologia della conversazione
+per un motivo completamente diverso — probabilmente residui di uno scambio
+precedente su un altro argomento, dato che la memoria (`Simple Memory`,
+finestra di 12 messaggi) è condivisa per lo stesso numero di telefono
+durante tutta la sessione di test, non si azzera ad ogni "argomento".
+
+Stesso tipo di problema del "Batteria?" di prima (il modello non collega
+correttamente il turno breve al contesto), ma qui più delicato: ha citato
+prezzi reali (non inventati) ma per prodotti sbagliati, dando l'impressione
+di una risposta autorevole quando invece è fuori tema.
+
+**Fix (nodo "AI Agent", sezione LISTINO):** aggiunta un'istruzione esplicita
+— quando il cliente chiede "altri/altro/un'alternativa" subito dopo un
+risultato del listino, il bot DEVE richiamare Consulta_listino con una query
+più ampia ma sullo STESSO argomento appena discusso (es. da "spazzolino" a
+"spazzolino elettrico" o "igiene orale"), e non deve mai rispondere con
+prodotti letti in uno scambio precedente su un argomento diverso solo
+perché compaiono in cronologia, anche se i prezzi citati sarebbero reali.
+
+Pubblicato con protocollo unpublish → edit → verifica su bozza → publish.
+Come per il fix del "Batteria?", non testabile offline (comportamento del
+modello, non logica deterministica): da confermare al prossimo test reale.
+
 ## File in questa cartella
 
 | File | Contenuto |

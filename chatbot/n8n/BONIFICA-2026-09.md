@@ -727,6 +727,43 @@ richiesta esplicita era "almeno con il mio numero" (+393403063950). Se
 serve estendere il reset anche all'altro numero, va solo aggiunto un altro
 wa_id nello stesso nodo Code.
 
+### Correzione importante (2026-09-05): `test_workflow` NON basta per un reset reale
+
+La verifica sopra ("l'esecuzione reale ha confermato che funziona") era
+**incompleta**: `test_workflow` esegue sempre in modalità `manual` (visibile
+nel campo `mode` dell'esecuzione), e in n8n le scritture su
+`$getWorkflowStaticData` fatte in modalità manuale NON vengono salvate in
+modo permanente — anche se l'esecuzione stessa restituisce l'output corretto
+(`cleared: [...]`), i dati letti dalle vere esecuzioni webhook restano quelli
+di prima.
+
+Scoperto così: il titolare ha chiesto un azzeramento immediato del numero di
+test; ho lanciato `test_workflow` sul trigger di reset (esecuzione 66669,
+mode `manual`) e riportato "fatto". Ma la conversazione successiva del
+titolare (esecuzioni reali 66670 e seguenti, mode `webhook`) mostrava ancora
+lo stato "sporco" di prima (`Stato prenotazione` con `nome: "Cross Action
+Vitality"` e `servizio: "Preparazioni galeniche"`, un residuo di
+contaminazione tra argomenti diversi di un test precedente) — il reset
+manuale non aveva scritto nulla di persistente. Da qui: niente saluto/
+informativa privacy iniziale (perché `known[wa]` era ancora `true`) e niente
+richiesta di nome/cognome nella prenotazione (perché il campo `nome` nello
+stato risultava già "noto", anche se con un valore sbagliato).
+
+**Fix per un reset immediato reale:** l'unico modo per ottenere una scrittura
+che persiste davvero è un'esecuzione con `mode: trigger` (o `webhook`), non
+`manual`. Per azzerare su richiesta, invece di `test_workflow`, si porta
+temporaneamente l'intervallo dello Schedule Trigger "Reset memoria test ogni
+4h" a pochi secondi (`unpublish → update → publish`), si aspetta che scatti
+per davvero (confermato via `search_executions` con `mode: "trigger"`), si
+verifica l'esecuzione risultante, poi si rimette subito l'intervallo a 4 ore
+(`unpublish → update → publish`). Confermato con l'esecuzione 66696
+(`mode: trigger`, `cleared: [booking, lastBot, known, lastWamid]`).
+
+Per la prossima volta che serve un azzeramento immediato: usare questa
+procedura (cambio temporaneo dell'intervallo), non `test_workflow` da solo —
+quello resta valido SOLO per verificare che la logica di un nodo sia corretta
+prima di pubblicare, mai per ottenere un effetto reale e duraturo sui dati.
+
 ## Round 9 (2026-09-05) — "non segue il filo, non ha memoria"
 
 Richiesta del titolare: controllare le conversazioni di oggi, che sembravano

@@ -727,6 +727,80 @@ richiesta esplicita era "almeno con il mio numero" (+393403063950). Se
 serve estendere il reset anche all'altro numero, va solo aggiunto un altro
 wa_id nello stesso nodo Code.
 
+## Round 9 (2026-09-05) — "non segue il filo, non ha memoria"
+
+Richiesta del titolare: controllare le conversazioni di oggi, che sembravano
+di nuovo perdere il filo e "non avere memoria" — nonostante il reset ogni 4h
+appena introdotto. Riletta tutta la sessione di test di oggi (esecuzioni dal
+webhook WhatsApp, numero 393403063950, ~16:00–16:44) trovando due bug
+distinti, entrambi dello stesso tipo delle volte precedenti: il contesto
+necessario era presente nella memoria, ma il modello non lo usava — non un
+problema di buffer/memoria che si svuota.
+
+### Bug 1 — "Mi indica tutti quelli che avete?" risponde con i SERVIZI
+
+Nell'esecuzione delle 16:02 il cliente chiede spazzolini, ottiene l'elenco,
+poi scrive "Mi indica tutti quelli che avete?": il bot risponde con l'elenco
+dei SERVIZI (spirometria, profilo lipidico...) invece di ampliare la ricerca
+sugli spazzolini appena discussi. Causa: la regola introdotta nel round
+precedente per "altri/altro/un'alternativa" (vedi commit `1f6aafb`) elencava
+solo quelle formule esatte — "tutti quelli che avete" non era coperta e il
+modello l'ha trattata come una richiesta generica invece che come
+continuazione dello stesso argomento.
+
+### Bug 2 — "Vorrei prenotare il ritiro di quello che ho scelto" non trova il prodotto
+
+Più seria. Cronologia dell'esecuzione 66349 (ore 18:14 locali): il cliente
+scrive "Prendo quest'ultimo" e il bot conferma esplicitamente "il modello
+che le consiglio è l'Oral-B Vitality CrossAction". Poco dopo (66354, ore
+18:15) il cliente segnala "Me l'ha già detto" e il bot si scusa in modo
+generico senza ripetere il nome. Poi, 21 minuti dopo (esecuzione 66498, ore
+18:36), il cliente scrive "Vorrei prenotare il ritiro di quello che ho
+scelto" e il bot richiede di nuovo "mi scrive il nome esatto dello
+spazzolino che ha scelto?" — pur avendolo già confermato lui stesso. Il
+cliente ribadisce "L'ho già detto prima" (66502) e il bot richiede di nuovo
+il nome.
+
+**Verifica prima di concludere:** scaricato il payload reale del nodo
+"Simple Memory" per l'esecuzione 66498 (`get_execution` con `includeData`).
+La chiamata `loadMemoryVariables` per quel turno conteneva 24 messaggi di
+cronologia, che includevano — a sole 2-3 battute di distanza — esattamente
+la frase "Perfetto, allora il modello che le consiglio è l'Oral-B Vitality
+CrossAction". Il dato era quindi presente e vicino nel contesto: non è un
+caso di finestra di memoria esaurita (`contextWindowLength`), ma la stessa
+categoria di errore di aderenza del modello già vista con "Batteria?" nel
+round precedente — semplicemente non ancora coperta da una regola esplicita
+per QUESTO tipo di riferimento (rimando a una scelta fatta più turni prima,
+non nel messaggio immediatamente precedente).
+
+### Fix applicato
+
+Aggiunte due regole esplicite al systemMessage dell'AI Agent (nodo `AI
+Agent`, workflow principale):
+
+1. In TONO, subito dopo la regola esistente sui messaggi ellittici
+   immediati ("batteria?", "prezzo?"): nuova regola che impone di rileggere
+   TUTTA la cronologia (non solo l'ultimo scambio) quando il cliente fa
+   riferimento a "quello che ho scelto / quello di prima / quello che mi ha
+   consigliato", e di non scusarsi genericamente ma cercare subito il dato
+   quando il cliente segnala "l'ho già detto prima".
+2. In LISTINO, ampliata la regola su "altri/altro/un'alternativa" per
+   coprire esplicitamente anche "tutti quelli che avete", "fammi vedere
+   tutto", "l'elenco completo", "cos'altro c'è" — stessa logica: continuare
+   sullo stesso argomento, mai rispondere con SERVIZI/OFFERTE o prodotti di
+   un argomento diverso letti in cronologia.
+
+Pubblicato con protocollo unpublish → update → verifica testo esatto sul
+draft (confronto byte-per-byte col file atteso) → publish. Nessuna modifica
+a nodi/connessioni, solo testo del systemMessage.
+
+**Non ancora del tutto risolto:** questa è una categoria di errore
+probabilistica (aderenza del modello a un'istruzione), non un bug
+deterministico — le regole esplicite hanno ridotto nettamente la frequenza
+nei round precedenti ma non garantiscono zero ricorrenze in casi di
+formulazione ulteriormente diversa. Da tenere d'occhio nelle prossime
+sessioni di test.
+
 ## File in questa cartella
 
 | File | Contenuto |

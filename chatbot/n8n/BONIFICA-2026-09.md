@@ -838,6 +838,44 @@ nei round precedenti ma non garantiscono zero ricorrenze in casi di
 formulazione ulteriormente diversa. Da tenere d'occhio nelle prossime
 sessioni di test.
 
+## Round 11 (2026-09-05) — doppia prenotazione sullo stesso orario
+
+Segnalazione del titolare dopo il reset del round precedente: il bot ha
+confermato un appuntamento (Profilo lipidico) in un orario dove ce n'era
+già un altro (servizio diverso), creando una vera sovrapposizione nel
+calendario reale.
+
+**Verificato sui log (esecuzioni 66718 e 66733, workflow principale):**
+`Controlla_disponibilita` aveva restituito correttamente, tra gli eventi
+del giorno, "Foro lobi + orecchini — Angelo Fonte" lunedì 7 settembre
+10:00–10:30. Il dato era quindi presente e corretto. Nonostante questo,
+l'AI Agent ha proposto "9:00, 9:30 oppure 10:00" (esecuzione 66718), il
+cliente ha scelto "Alle 10" (66723), e il bot ha confermato e salvato con
+`Prenota_appuntamento` un nuovo evento "Profilo lipidico — Franco Galati"
+per lo stesso identico intervallo 2026-09-07T10:00–10:30 (esecuzione
+66733) — sovrapposto all'evento già esistente.
+
+Stessa categoria di bug delle volte precedenti (dato disponibile,
+ignorato dal modello), ma qui su una funzione con conseguenze reali
+(doppia prenotazione), non solo conversazionali.
+
+**Fix:** aggiunta una regola esplicita e più meccanica in GESTIONE
+APPUNTAMENTI (nodo AI Agent), subito dopo quella sugli slot da 30 minuti:
+impone di confrontare l'orario esatto (giorno + inizio + 30 min) con OGNI
+evento restituito da Controlla_disponibilita, riga per riga, sia PRIMA di
+proporre uno slot sia di nuovo PRIMA di confermarlo/salvarlo — non solo
+una volta a inizio conversazione. Pubblicato con protocollo unpublish →
+update → verifica byte-per-byte sul draft → publish.
+
+**Da decidere col titolare:** i due eventi di test rimasti nel calendario
+reale — l'appuntamento appena creato in sovrapposizione ("Profilo lipidico
+— Franco Galati", 7/9 10:00) e un evento "fantasma" precedente ("Profilo
+lipidico — Cross Action Vitality", 7/9 16:30, nato da un residuo di
+contaminazione tra test in un momento in cui il reset numero-test non
+aveva ancora funzionato, vedi Round 10) — non sono stati cancellati:
+richiede di intervenire sul Google Calendar reale, quindi è stato lasciato
+al titolare decidere se ripulirli.
+
 ## File in questa cartella
 
 | File | Contenuto |

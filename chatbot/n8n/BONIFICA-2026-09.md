@@ -1047,3 +1047,27 @@ parametri strozzati. Tornare lì non poteva risolvere nulla, e infatti non
 ha risolto — anzi, con `maxTokens: 350` peggiora. La versione di agosto,
 quella buona, non è mai stata esportata nel repo e non è più recuperabile
 da n8n. Va ricostruito il comportamento, non ripristinato un file.
+
+### Intervento: memoria liberata (7 settembre, sera)
+
+Applicato sul workflow principale, con verifica byte-per-byte prima di
+pubblicare:
+
+1. **I blocchi fissi non stanno più nel messaggio del cliente.**
+   `[ISOLAMENTO PRENOTAZIONI]`, `[DATI NEGOZIO DA FOGLIO]`,
+   `[SERVIZI DA FOGLIO]` e `[OFFERTE DA FOGLIO]` sono stati spostati in
+   una nuova sezione **CONTESTO** in fondo al systemMessage, dove vengono
+   passati una volta per esecuzione e **non entrano nella cronologia**.
+   Il campo `text` dell'AI Agent ora contiene solo data/ora, il messaggio
+   vero del cliente, le note di sistema e la `bookingLine`.
+   - peso della parte fissa per messaggio: **da 2.210 a ~287 caratteri (-88%)**
+   - i riferimenti nel prompt ("nel messaggio utente") sono stati
+     aggiornati per puntare alla sezione CONTESTO.
+2. **`maxTokensFromMemory` da 1.200 a 8.000.** Con i messaggi alleggeriti,
+   la finestra da 12 messaggi entra comodamente invece di essere troncata
+   a 5.
+
+Restano da fare (punti 3 e 4 del piano concordato col titolare):
+alzare `reasoningEffort` da `low`, e sfoltire il prompt dalle regole
+aggiunte nei round 5-11, che erano rimedi a un problema che stava
+altrove e che hanno solo allungato le istruzioni.

@@ -929,6 +929,21 @@ permette di assegnare da remoto: vanno aperti nell'editor e va selezionata
 la credenziale "WhatsApp account". Tutte le altre (Google Calendar, Google
 Sheets, OpenAI, WhatsApp Trigger, Send message) sono già assegnate.
 
+Provate e scartate due strade, per non riprovarci a vuoto in futuro:
+`setNodeCredential` e la ricreazione del nodo con `credentials` già
+incluso nella `addNode`. Entrambe rifiutate dallo stesso controllo
+(`node type 'n8n-nodes-base.httpRequestTool' does not accept credential
+'whatsAppApi'`): il validatore guarda le credenziali dichiarate
+staticamente dal tipo di nodo, e l'HTTP Request non dichiara `whatsAppApi`
+perché la accetta solo per via dinamica tramite `nodeCredentialType`. Il
+connettore inoltre salta di proposito gli HTTP Request nell'assegnazione
+automatica. Nessuna API key n8n disponibile nell'ambiente per aggirare la
+cosa via REST.
+
+Finché mancano quelle quattro credenziali la copia funziona lo stesso per
+conversazione, listino, appuntamenti e promemoria: restano fuori uso solo
+l'invio dell'informativa privacy e la lettura delle foto.
+
 **Come provarla:** i due workflow non possono ricevere i messaggi
 contemporaneamente — Meta consegna a un solo indirizzo e n8n rifiuta due
 webhook attivi sullo stesso percorso. Si attiva uno alla volta,

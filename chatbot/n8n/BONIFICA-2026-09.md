@@ -1071,3 +1071,41 @@ Restano da fare (punti 3 e 4 del piano concordato col titolare):
 alzare `reasoningEffort` da `low`, e sfoltire il prompt dalle regole
 aggiunte nei round 5-11, che erano rimedi a un problema che stava
 altrove e che hanno solo allungato le istruzioni.
+
+### Round 14 (7 settembre, sera) — "niente privacy e non me lo fa prenotare"
+
+Due segnalazioni dopo l'intervento sulla memoria, entrambe verificate sui
+log (esecuzioni 70633-70654).
+
+**1. Privacy assente: comportamento corretto, non un bug.** Il nodo
+`Cliente gia visto?` restituiva il numero come già noto, quindi il ramo
+dell'informativa non partiva. È il design voluto: il pulsante parte solo al
+primo messaggio di una conversazione nuova, e il titolare aveva già scritto
+decine di volte nella stessa giornata. Si ripresenta azzerando lo stato del
+numero (che azzera anche `known`).
+
+**2. "Non me lo fa prenotare": regola sbagliata nel prompt.** Ai messaggi
+"Posso prenotarlo?" e "Ma io lo vorrei prenotare" (riferiti a uno
+spazzolino) il bot rispondeva *"Per questo prodotto non facciamo una
+prenotazione formale"* — frase presa di peso dalla riga di RITIRO
+PREPARATI: "Prodotti da banco: niente prenotazione formale". Il bot stava
+seguendo correttamente una regola che era sbagliata: per il titolare il
+ritiro di un prodotto a listino si prenota eccome.
+
+Riga sostituita con l'istruzione opposta ed esplicita: il ritiro di un
+prodotto già a listino si fissa come un appuntamento (giorno, ora, nome,
+promemoria, evento "Ritiro prodotto — Nome Cognome" col prodotto nella
+descrizione), senza i 3 giorni di attesa che valgono solo per i galenici,
+e senza mai rimandare solo al telefono.
+
+**Nota su un effetto collaterale osservato:** finché una prenotazione resta
+`booked`, la nota `[PRENOTAZIONE GIÀ SALVATA: ... VIETATO creare un secondo
+evento]` viene iniettata a ogni messaggio fino alla data dell'appuntamento,
+anche quando il cliente ha cambiato argomento. Nella sessione osservata
+girava ancora "Profilo lipidico, mercoledì, 10:00, Lucio Fabri" mentre si
+parlava di spazzolini. Da rivedere: lo stato dovrebbe chiudersi quando la
+conversazione passa a un argomento diverso, non restare appeso per giorni.
+
+Stato del numero di test azzerato con esecuzione reale (`mode: trigger`,
+esecuzione 70665, `cleared: [booking, lastBot, known, lastWamid]`),
+intervallo dello schedule riportato a 4 ore.

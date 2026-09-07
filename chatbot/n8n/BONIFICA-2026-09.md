@@ -975,3 +975,75 @@ disattivando l'altro.
 Nota: `arilufarma-consulta-listino.json` era elencato qui ma non è mai stato
 effettivamente esportato nel repo — solo il singolo nodo Code rilevante
 (`consulta-listino-filtra-corrispondenze.js`, sopra) è stato salvato finora.
+
+## Round 13 (2026-09-07) — la causa vera: la memoria viene troncata prima di arrivare al modello
+
+Il titolare ha insistito su un punto che avevo trascurato: "prima di Grok
+funzionava meglio". Tutti i confronti fatti fino a qui erano 3 settembre
+contro oggi, cioè **post-Grok in entrambi i casi**. Il confronto vero non
+era mai stato fatto.
+
+**Fonte trovata:** il foglio "Messaggi" del gestionale registra ogni
+messaggio cliente e ogni risposta dal 25 luglio, e non ha rotazione (le
+esecuzioni n8n invece si fermano al 4 settembre). 303 scambi, con un salto
+netto: 3 messaggi il 31 agosto, poi 85 il 2 settembre e 88 il 3 — la
+sessione di lavoro che ha cambiato il bot.
+
+**Come rispondeva in agosto** (esempi reali dal foglio):
+- "le serve qualcosa più per avere energia durante il giorno o per
+  dormire/recuperare meglio la notte?"
+- "In che forma la preferisce? capsule, gocce o compresse"
+- "Le consiglio di abbinarla a un solare viso alto di giorno, altrimenti
+  le macchie rischiano di tornare"
+- Cliente: "Ti ricordi del mio mal di pancia?" → "Sì, me lo ricordo. Mi
+  aveva scritto che aveva mal di pancia con sintomi importanti..."
+
+Conduceva la conversazione, qualificava il bisogno, dava consigli da
+farmacista e ricordava. Oggi, alla stessa classe di domanda, risponde
+"Mi scriva il nome preciso". La percezione del titolare è documentata.
+
+### La causa tecnica
+
+`AI Agent` ha `maxTokensFromMemory: 1200`. Misurato sul payload reale
+della memoria (esecuzione 70140, conversazione spazzolini del 7 settembre):
+
+| | |
+|---|---|
+| cronologia completa in memoria | 18 messaggi, ~4.915 token |
+| limite configurato | 1.200 token |
+| messaggi che arrivano davvero al modello | **5 su 18** |
+
+Il 75% della conversazione viene buttato via **prima** che il modello la
+veda. E c'è un moltiplicatore: ogni messaggio del cliente pesa ~555 token
+anche quando il cliente ha scritto due parole ("Elettrico", "Il pro 3"),
+perché a ogni turno vengono accodati e poi memorizzati i blocchi
+[DATI NEGOZIO DA FOGLIO], [SERVIZI DA FOGLIO] e [OFFERTE DA FOGLIO]. La
+memoria è satura di ripetizioni degli stessi dati di negozio, e il
+contenuto utile viene espulso per primo.
+
+**Questo spiega perché nessuna delle regole aggiunte nei round 5-11 ha
+funzionato davvero.** Avevo verificato più volte che il dato ERA nella
+memoria — ed era vero — ma non avevo verificato che arrivasse al modello.
+Non ci arrivava. Ogni round ho aggiunto una regola che diceva al modello
+di rileggere una cronologia che non riceveva, e ogni regola aggiunta ha
+allungato il prompt peggiorando l'aderenza al resto.
+
+### Altri parametri strozzati (già presenti il 3 settembre)
+
+- `reasoningEffort: low` sul modello
+- `gpt-5.4-mini`
+- `contextWindowLength: 12` sulla memoria
+- nel prompt: "Messaggi brevi (WhatsApp): 2-4 righe", "Sii conciso: max
+  una domanda per messaggio" — spiegano il tono telegrafico rispetto alle
+  risposte articolate di agosto
+- `maxTokens: 350` (poi portato a 2000 sull'attuale, ma **rimasto a 350
+  nella copia** del 3 settembre: è la causa della risposta vuota e
+  dell'incarto osservati testando la copia)
+
+### Conseguenza sulla strategia
+
+Il "backup del 3 settembre" **è già la versione post-Grok**: ha gli stessi
+parametri strozzati. Tornare lì non poteva risolvere nulla, e infatti non
+ha risolto — anzi, con `maxTokens: 350` peggiora. La versione di agosto,
+quella buona, non è mai stata esportata nel repo e non è più recuperabile
+da n8n. Va ricostruito il comportamento, non ripristinato un file.

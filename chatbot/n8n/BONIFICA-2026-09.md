@@ -876,6 +876,76 @@ aveva ancora funzionato, vedi Round 10) — non sono stati cancellati:
 richiede di intervenire sul Google Calendar reale, quindi è stato lasciato
 al titolare decidere se ripulirli.
 
+## Round 12 (2026-09-07) — copia di confronto con la versione del 3 settembre
+
+Dopo l'ennesima conversazione con perdita del filo (vedi sotto), il titolare
+ha chiesto di poter tornare a com'era il bot "a luglio/agosto", tenendo il
+workflow attuale intatto e lavorando su una copia separata.
+
+**Cosa esisteva davvero come backup.** Nel repo la storia dell'export salta
+dal 23 luglio (`1deaf29`) al 3 settembre (`d376d12`):
+- **23 luglio**: 19 nodi, architettura completamente diversa ("Cervello del
+  bot", "Leggi sessione", webhook GET/POST manuali). È il prototipo
+  iniziale, senza listino, promemoria, lettura foto, privacy automatica,
+  spostamento e cancellazione appuntamenti. Non è "il bot di prima".
+- **3 settembre**: 41 nodi, architettura identica a oggi. È questo il
+  riferimento utile.
+- Di agosto non esiste export nel repo.
+
+**Cosa è cambiato dal 3 settembre a oggi.** Solo 5 nodi modificati, 4
+aggiunti (il reset 4h del numero di test), 2 rimossi (la scorciatoia
+"Conferma veloce" che scavalcava l'AI). Il cambiamento di gran lunga più
+grosso è il prompt dell'AI Agent: **da 15.574 a 19.924 caratteri, da 77 a
+83 regole, +28% in quattro giorni** — tutte aggiunte durante questa
+bonifica. È una spiegazione tecnica plausibile del "prima funzionava
+meglio" riferito dal titolare: più istruzioni concorrenti peggiorano
+l'aderenza a ciascuna, ed è esattamente il sintomo osservato (non collega
+il contesto, richiede dati già forniti).
+
+**Copia creata:** workflow `1xKrmusYCuXhN4ht` — "Arilùfarma Chatbot
+Whatsapp — versione 3 settembre (confronto)", **disattivato**.
+
+Ricostruita nodo per nodo direttamente dal backup `d376d12` (non copiando
+dal workflow attuale, su richiesta esplicita del titolare: "magari in quei
+5 nodi c'è qualcosa di sbagliato"). Metodo: creazione di un workflow vuoto
+via SDK, poi inserimento dei 41 nodi con i parametri presi tali e quali dal
+JSON del backup, più le 47 connessioni originali.
+
+**Verificato dopo la ricostruzione**, confrontando la copia col backup:
+41/41 nodi presenti, nessuno in più, connessioni identiche una per una,
+parametri identici su tutti i nodi tranne uno, prompt dell'AI Agent
+identico byte per byte (15.574 caratteri). L'unica differenza è in
+"Consolida stato prenotazione", dove il backup scrive la classe di
+caratteri come sequenza di escape letterale (`̀-ͯ`) mentre nella
+copia sono finiti i caratteri Unicode corrispondenti: le due forme sono
+equivalenti in JavaScript (verificato eseguendo entrambe le regex su una
+stringa accentata, stesso risultato), quindi il comportamento è identico.
+
+**Da completare a mano (4 click):** i quattro nodi HTTP Request
+(`Invia_informativa_privacy`, `Invia_informativa_privacy (auto)`,
+`Ottieni URL media`, `Scarica immagine`) usano una credenziale di tipo
+dinamico (`predefinedCredentialType` → `whatsAppApi`) che l'API di n8n non
+permette di assegnare da remoto: vanno aperti nell'editor e va selezionata
+la credenziale "WhatsApp account". Tutte le altre (Google Calendar, Google
+Sheets, OpenAI, WhatsApp Trigger, Send message) sono già assegnate.
+
+**Come provarla:** i due workflow non possono ricevere i messaggi
+contemporaneamente — Meta consegna a un solo indirizzo e n8n rifiuta due
+webhook attivi sullo stesso percorso. Si attiva uno alla volta,
+disattivando l'altro.
+
+**Da tenere presente nel confronto:**
+- Il sub-workflow "ArilùFarma · Consulta listino" (`Sld2FlyBwuEHKYsY`) è
+  condiviso fra i due workflow: anche la copia userà la versione ATTUALE
+  della ricerca, quindi con i fix su plurali e parola intera. La ricerca
+  listino non torna indietro.
+- Il prompt del 3 settembre contiene ancora due nomi di clienti reali
+  cablati nel testo ("Lucio Stolti, Antonio Profili"), rimossi con un
+  commit successivo (`ff90c59`). Sono stati mantenuti per fedeltà al
+  backup, ma è un dato da non lasciare in produzione.
+- Nella copia non c'è il reset ogni 4 ore del numero di test (non esisteva
+  il 3 settembre): testando lì, il numero non si azzera da solo.
+
 ## File in questa cartella
 
 | File | Contenuto |

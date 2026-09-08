@@ -1818,3 +1818,92 @@ Mettere una colonna descrizione/ingredienti chiave nel foglio Prodotti:
 sarebbe un dato **reale** letto dal gestionale invece che dalla memoria
 del modello — la categoria che finora non ha mai prodotto errori. Resta
 la soluzione più solida per i prodotti che contano davvero.
+
+---
+
+## Piano concordato per il 9 settembre
+
+Fine giornata dell'8 settembre. Il titolare chiede di fermarsi e ripartire
+domani. Qui il ragionamento, così non va ricostruito.
+
+### La diagnosi
+
+I guasti dell'8 settembre si dividono in tre gruppi:
+
+| origine | quanti | esito |
+|---|---|---|
+| nodo `Stato prenotazione` che indovina i dati con espressioni regolari | 6 | tappati uno a uno |
+| dati veri non letti (foglio, calendario) | 2 | risolti collegando la fonte, **zero falsi positivi da allora** |
+| errori di processo miei (pubblicazione dimenticata, rollback, segnaposto, filtro largo) | 4 | corretti |
+
+Il prompt non ha causato nessuno dei guasti. L'unico episodio che lo
+riguardava (INCI) era una regola che funzionava come scritta.
+
+### Il principio
+
+Il sistema fa oggi due errori speculari:
+
+- **il codice cerca di capire la lingua** (regex che decidono se "pelle
+  sensibile" è un servizio) — partita che il codice perde;
+- **al modello si chiede di fare i conti** (mezza pagina che gli chiede di
+  confrontare orari "riga per riga, non a occhio") — chiederlo per
+  iscritto non lo rende affidabile.
+
+Vanno scambiati: **la lingua al modello, i calcoli al codice.** Dove nel
+prompt c'è scritto "verifica attentamente", manca una funzione; dove nel
+codice c'è una regex sulle parole, quello è lavoro del modello.
+
+### Ordine dei lavori
+
+**1. Smontare l'indovinello in `Stato prenotazione`** (priorità: è la
+fonte dei guasti veri). Resta ciò che legge dati reali — agenda dal
+foglio, dettaglio dal calendario, promemoria già deciso. Sparisce
+l'inferenza di servizio/giorno/ora/nome dal testo libero: quei campi li
+tiene l'agente nella conversazione, ed è già lui a passarli quando salva.
+Da mostrare al titolare **prima** di pubblicare, non dopo.
+
+**2. Accorciare il prompt**, sezione per sezione con un collaudo per
+ciascuna (mai più un incollone da 22.500 caratteri). Misure attuali:
+
+| sezione | caratteri | destinazione |
+|---|---|---|
+| GESTIONE APPUNTAMENTI + RITIRI + CANCELLAZIONE + SPOSTAMENTO | ~7.000 (31%) | descrizioni degli strumenti |
+| regola anti-sovrapposizione | ~900 | **in codice**: filtrare gli slot occupati prima che il modello li veda |
+| regole "messaggio ellittico" e "quello di prima" | ~1.900 | da cancellare: toppe messe quando il modello non vedeva la cronologia, che ora vede |
+
+Stima: da 22.583 a circa 12.000 caratteri. Restano nel prompt le regole
+che devono valere **prima** di scegliere uno strumento — privacy, limiti,
+isolamento fra clienti, urgenze — perché le descrizioni degli strumenti
+vengono lette solo quando quello strumento è già in considerazione.
+
+**3. Descrizioni prodotti precompilate dall'IA.** Decisione del titolare:
+la colonna nel foglio resta **basica** e nessuno scrive a mano centinaia
+di righe — oggi è un gestionale di test, domani i prodotti saranno molti.
+
+Distinzione che conta: **non** far improvvisare il bot a ogni risposta, ma
+un passaggio **una volta sola** che scrive nel foglio. Stesso lavoro zero
+per il titolare, ma il dato diventa fisso, uguale per tutti i clienti,
+veloce e soprattutto **correggibile**: una descrizione sbagliata si
+sistema una volta e resta sistemata.
+
+Workflow separato "Compila descrizioni prodotti": legge solo le righe con
+descrizione vuota, chiede al modello una o due righe (che prodotto è, per
+chi, la caratteristica per cui è conosciuto), riscrive nel foglio, gira su
+richiesta o di notte sui soli prodotti nuovi.
+
+**Regola non negoziabile:** se il modello non riconosce il prodotto,
+lascia la cella **vuota**. Non inventa. Una cella vuota il bot la gestisce
+già bene; una descrizione inventata no. Il farmacista rivede solo le celle
+rimaste vuote più un campione a caso.
+
+Effetto collaterale utile: più il foglio si riempie, meno serve nel prompt
+il permesso "usa la tua conoscenza generale" — un altro pezzo che si
+accorcia da solo.
+
+### Impegni di metodo presi
+
+- Avvisare il titolare **prima** di ogni prova che manda un messaggio
+  reale sul suo numero (le esecuzioni manuali inviano davvero).
+- Mostrare il risultato **prima** di pubblicare, non dopo.
+- Confronto riga per riga fra codice pubblicato e file nel repo **sempre**
+  prima di pubblicare, non solo quando si sospetta un problema.

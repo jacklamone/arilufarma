@@ -1164,3 +1164,86 @@ esplicita dei falsi positivi (`va confermat`, `da confermar`, `confermat*
 in sede/in negozio/al telefono`). Collaudato su 8 frasi reali prese dai log
 — 4 che NON devono contare come conferma e 4 che devono — tutte corrette,
 verificate anche rieseguendo il test sul codice effettivamente pubblicato.
+
+---
+
+## Round 16 — la nota di prenotazione vuota (7-8 settembre)
+
+Il titolare segnala due sintomi nella stessa chat delle 21:56 del 7
+settembre: il bot **tergiversa** su "mi ricorda cosa ho prenotato?" e poi
+**perde nome e cognome** nello stesso momento, senza aver aspettato le 4
+ore di reset.
+
+Le esecuzioni reali confermano entrambi i sintomi e li riportano a **una
+sola causa**, la stessa del Round 15.
+
+### Cosa mostrano i log
+
+Esecuzioni `70727`, `70731`, `70735`, `70739` — quattro messaggi
+consecutivi, stesso stato letto da `Stato prenotazione`:
+
+```json
+{"servizio":"","giorno":"","ora":"","nome":"","reminder":"si",
+ "confirmed":true,"reminderAsked":true,"booked":true,
+ "event_id":"","bookedDate":"2026-09-07"}
+```
+
+e quindi questa nota iniettata nel messaggio utente:
+
+```
+[PRENOTAZIONE GIÀ SALVATA: . Citala SOLO se chiede conferma. ...]
+```
+
+`booked: true` **con tutti e quattro i campi vuoti**: al modello veniva
+detto "esiste una prenotazione salvata" senza dirgli *quale*. Le risposte
+seguono esattamente da lì:
+
+| cliente | bot |
+|---|---|
+| "Mi ricorda gli appuntamenti?" | "Sì, se il promemoria WhatsApp è stato richiesto in fase di prenotazione. Se vuole, posso verificare la sua prenotazione attuale." |
+| "Si" | "Sì, per questa prenotazione il promemoria WhatsApp è attivo." |
+| "Mi rocsrsa cosa ho prenotato?" | "Ha prenotato il ritiro dell'Oral-B Pro 3 per mercoledì 9 settembre alle 11:00." |
+
+Il bot non tergiversava per scelta: **non aveva il dato**. Al terzo
+messaggio ha risposto correttamente solo perché l'informazione era ancora
+nello storico della chat (Simple Memory), non nello stato.
+
+Lo stesso `booked: true` bloccava il blocco di estrazione
+(`if (!(st.booked && !newIntent))`), quindi nome e cognome non potevano
+più entrare nello stato: è il difetto del Round 15, già corretto e
+pubblicato.
+
+### Fix di questo round (difesa in profondità)
+
+Nel nodo `Stato prenotazione`:
+
+1. **`statoVuoto()`** — se `booked` è vero ma servizio, giorno, ora, nome
+   *e* `event_id` sono tutti vuoti, lo stato non è una prenotazione: è uno
+   stato sporco, e viene azzerato con `clearBooking()`. Sblocca anche la
+   raccolta dei campi già dallo stesso messaggio.
+2. **`dettagliSalvati`** — la nota `[PRENOTAZIONE GIÀ SALVATA: ...]` viene
+   emessa solo se ha davvero dei dettagli da riportare. Senza dettagli si
+   ricade sul ramo generico `[PRENOTAZIONE: ...]`, che chiede i campi
+   mancanti invece di affermare una prenotazione fantasma.
+3. **`fastConfirm`** richiede anch'esso `dettagliSalvati`: senza campi
+   avrebbe risposto «Sì, è confermato ✅ .», una conferma vuota.
+4. La nota, quando i dettagli ci sono, ora **impone la risposta immediata**:
+   se il cliente chiede qualsiasi cosa sulla sua prenotazione, la prima
+   risposta deve già contenere servizio, giorno e ora — vietato rispondere
+   «posso verificare» o rimandare al messaggio dopo.
+
+Nessuna modifica al systemMessage: la nota arriva a ogni turno insieme ai
+dati e agisce dove serve, mentre un'altra regola in un prompt da 22 mila
+caratteri è il tipo di accumulo che ha causato i problemi precedenti.
+
+### Verifica
+
+Riprodotto lo stato esatto delle esecuzioni 70727/70731/70735/70739 sui
+quattro messaggi reali: la nota vuota non viene più emessa e `booked`
+torna `false`, quindi i campi ricominciano a essere raccolti. Con una
+prenotazione vera e completa la nota resta e contiene l'istruzione di
+rispondere subito. Rieseguiti anche gli 8 test del Round 15 sul codice
+effettivamente pubblicato: tutti passati.
+
+Pubblicato: `activeVersionId f8ea149b-d818-406a-b92e-15d24fd4c70d`,
+workflow attivo.

@@ -193,6 +193,18 @@ try {
   }
   if (st.booked && (!st.bookedDate || st.bookedDate < ymdRome(0))) clearBooking();
 
+  // Uno stato "prenotato" senza NESSUN campo compilato non e' una prenotazione:
+  // e' uno stato sporco. Finche' resta booked blocca la raccolta dei campi piu'
+  // sotto, e la nota iniettata diventa "[PRENOTAZIONE GIA' SALVATA: .]" — dice
+  // all'agente che una prenotazione esiste ma non gli dice quale, e l'agente
+  // tergiversa invece di rispondere (osservato in produzione il 7 settembre,
+  // esecuzioni 70727/70731/70735/70739). Meglio nessuna prenotazione che una
+  // prenotazione vuota.
+  function statoVuoto() {
+    return !st.servizio && !st.giorno && !st.ora && !st.nome && !st.event_id;
+  }
+  if (st.booked && statoVuoto()) clearBooking();
+
   if (/\boggi\b/.test(lastUser)) {
     st.giorno = weekdayRome(0);
     st.booked = false;
@@ -278,7 +290,11 @@ try {
 
   data.booking[wa] = st;
 
-  const fastConfirm = !newIntent && !isGreeting && !!st.booked && asksConfirm;
+  // Senza NESSUN campo noto la risposta rapida sarebbe «Sì, è confermato ✅ .»:
+  // una conferma vuota. In quel caso si lascia rispondere l'agente.
+  const dettagliSalvati = [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ');
+
+  const fastConfirm = !newIntent && !isGreeting && !!st.booked && asksConfirm && !!dettagliSalvati;
   const fastText = fastConfirm
     ? ('Sì, è confermato ✅\n' + [st.servizio, st.nome && ('per ' + st.nome), st.giorno, st.ora && ('alle ' + st.ora)].filter(Boolean).join(' ') + '.')
     : '';
@@ -291,12 +307,17 @@ try {
     ? ('Promemoria GIÀ deciso dal cliente: ' + st.reminder + '. NON richiederlo: salva con Promemoria=' + st.reminder + '.')
     : (st.reminderAsked ? 'Promemoria già chiesto: attendi la risposta, non richiederlo.' : '');
 
+  // Secondo controllo dello stato vuoto: booked puo' essere stato riacceso piu'
+  // sopra (bookedDaBot, conferma del cliente) senza che i campi siano noti. Una
+  // nota "GIA' SALVATA" senza dettagli e' peggio di nessuna nota: si ricade sul
+  // ramo generico, che chiede i campi mancanti invece di dire al modello che
+  // esiste una prenotazione di cui non sa nulla.
   let note = '';
-  if ((st.booked || st.event_id) && !newIntent) {
+  if ((st.booked || st.event_id) && !newIntent && dettagliSalvati) {
     if (isGreeting) {
-      note = ' [PRENOTAZIONE GIÀ SALVATA in background: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Il cliente sta SOLO salutando. Rispondi con un saluto breve e «Come posso aiutarla?». NON ripetere la conferma. NON creare eventi.]';
+      note = ' [PRENOTAZIONE GIÀ SALVATA in background: ' + dettagliSalvati + '. Il cliente sta SOLO salutando. Rispondi con un saluto breve e «Come posso aiutarla?». NON ripetere la conferma. NON creare eventi.]';
     } else {
-      note = ' [PRENOTAZIONE GIÀ SALVATA: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. Citala SOLO se chiede conferma. Vietato citare altri clienti del calendario. VIETATO creare un secondo evento.]';
+      note = ' [PRENOTAZIONE GIÀ SALVATA: ' + dettagliSalvati + '. Se il cliente chiede QUALSIASI cosa sulla sua prenotazione (cosa ha prenotato, quando, a che ora, se è confermata, se ha il promemoria), la tua PRIMA risposta deve già contenere servizio, giorno e ora scritti qui sopra: è VIETATO rispondere «posso verificare» o rimandare al messaggio dopo. Vietato citare altri clienti del calendario. VIETATO creare un secondo evento.]';
     }
   } else if (readyToBook && yes) {
     note = ' [PRENOTAZIONE DA CONFERMARE: ' + [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ') + '. ' + (remNote ? remNote + ' ' : '') + 'Controlla_disponibilita prima. Se esiste già un evento con STESSO nome e orario, non crearne un altro.]';

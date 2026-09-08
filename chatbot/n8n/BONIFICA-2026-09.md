@@ -1751,3 +1751,70 @@ cinque i campi raccolti correttamente, nota `[PRENOTAZIONE DA CONFERMARE]`
 regolare. Rieseguiti anche i test dei Round 15, 19 e 22: tutti passati.
 
 Pubblicato: `activeVersionId 5ccceb28-9837-46c6-ac2b-dc794f1aca2a`.
+
+---
+
+## Round 24 — informazioni sui cosmetici, ma niente INCI (8 settembre)
+
+Il titolare nota che il bot descrive volentieri uno spazzolino Oral-B ma
+sulla crema viso risponde "non posso recuperare l'INCI".
+
+**Non era un guasto: era la regola scritta da noi.** L'eccezione alla
+regola "non inventare nulla" era formulata attorno ai dispositivi —
+citava «spazzolini elettrici, dispositivi, elettrodomestici per l'igiene»
+e come esempi di dati ammessi «modalità, batteria, timer, dotazione». Un
+cosmetico non rientrava, e il modello ha fatto bene a non estendere il
+permesso di propria iniziativa.
+
+Due cose distinte, che vale la pena tenere separate:
+
+- **Con l'Oral-B** il bot non ha cercato nulla online: ha usato la propria
+  conoscenza generale di un prodotto commerciale noto, come l'eccezione
+  gli consente.
+- **L'INCI** non è nel listino e il bot non ha accesso a internet: per
+  darlo dovrebbe recitarlo a memoria.
+
+### Decisione del titolare
+
+Più informazioni sui cosmetici **sì**, INCI **no**. Motivo: le formule
+cambiano a ogni riformulazione e un elenco ingredienti sbagliato detto da
+una parafarmacia a chi ha un'allergia è un rischio reale, di natura
+diversa dallo sbagliare il numero di modalità di uno spazzolino.
+
+### Modifica
+
+L'eccezione ora vale per due famiglie: **(a)** dispositivi ed
+elettrodomestici per l'igiene; **(b)** cosmetici e prodotti per la cura di
+pelle e capelli. Per i cosmetici il bot può dire: tipo di pelle o capello
+a cui è destinato, texture e formato, uso giorno/notte o viso/corpo, e gli
+ingredienti caratterizzanti per cui il prodotto è conosciuto (acido
+ialuronico, niacinamide, polifenoli d'uva…).
+
+Restano **vietati**: l'INCI e l'elenco completo degli ingredienti, e le
+risposte su allergeni o intolleranza a un singolo ingrediente. In quei
+casi il bot deve dire che l'elenco va letto sulla confezione e invitare a
+passare in parafarmacia o a parlare col Dott. Conti.
+
+Invariato: prezzo, disponibilità e presenza a listino restano SOLO quelli
+di `Consulta_listino`, mai a memoria; l'eccezione continua a NON valere
+per farmaci, integratori, dosaggi, posologie e consigli di salute.
+
+Aggiunto anche un richiamo nella sezione LISTINO, dove atterrano le
+domande sulle creme, perché citava solo gli spazzolini.
+
+### Verifica
+
+Confronto riga per riga fra il prompt pubblicato e quello atteso: 126
+righe su 126 identiche a parte la riga 86, che è la modifica voluta in
+più. Verificate integre tutte le sezioni critiche (isolamento
+prenotazioni, anti-sovrapposizione, privacy, urgenze/112, ritiri) e le 3
+espressioni n8n del blocco CONTESTO.
+
+Pubblicato: `activeVersionId 8ff8b773-70b1-40ce-8fb8-01c76ff55f6c`.
+
+### Strada alternativa, non presa oggi
+
+Mettere una colonna descrizione/ingredienti chiave nel foglio Prodotti:
+sarebbe un dato **reale** letto dal gestionale invece che dalla memoria
+del modello — la categoria che finora non ha mai prodotto errori. Resta
+la soluzione più solida per i prodotti che contano davvero.

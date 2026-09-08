@@ -1247,3 +1247,89 @@ effettivamente pubblicato: tutti passati.
 
 Pubblicato: `activeVersionId f8ea149b-d818-406a-b92e-15d24fd4c70d`,
 workflow attivo.
+
+---
+
+## Round 17 — il gestionale diventa la fonte (8 settembre)
+
+Richiesta del titolare: la risposta a "cosa ho prenotato?" non deve
+dipendere dalla memoria del bot, ma dal gestionale.
+
+### Il buco
+
+Il foglio `Prenotazioni` ha già tutte le colonne che servono:
+
+```
+data | wa_id | nome | tipo | inizio | stato | reminder | event_id
+```
+
+Il bot ci **scriveva** (`Salva_prenotazione`, `Aggiorna_prenotazione`,
+`Aggiorna_prenotazione_per_id`) ma **non aveva nessuno strumento per
+rileggerlo**. L'unica lettura sul calendario, `Controlla_disponibilita`,
+serve agli slot occupati di tutti i clienti e nella sua stessa descrizione
+vieta di usarla per dire al cliente cosa ha prenotato lui.
+
+Quindi la domanda aveva una risposta scritta nel gestionale e il bot non
+andava a leggerla: si affidava allo stato in memoria, quello che il 7
+settembre era `booked: true` con tutti i campi vuoti.
+
+### Intervento
+
+**Nuovo nodo `Leggi Prenotazioni cliente`** (Google Sheets, `read`),
+inserito nel percorso principale fra `Elenco servizi` e
+`Stato prenotazione`. Filtra sul numero di chi scrive:
+
+```
+lookupColumn: wa_id
+lookupValue:  ={{ $('WhatsApp Trigger').first().json.messages[0].from }}
+```
+
+Il valore è un'espressione fissa, **mai** `$fromAI`: il modello non può
+chiedere le prenotazioni di un altro numero. Il numero WhatsApp è l'unica
+chiave che il cliente non può falsificare — la ricerca per nome e cognome
+farebbe leggere a un cliente gli appuntamenti di un omonimo.
+
+Impostazioni del nodo: `alwaysOutputData: true` (con zero righe la catena
+deve proseguire, altrimenti il bot smette di rispondere a chi non ha
+prenotazioni), `onError: continueRegularOutput`, 2 tentativi.
+
+**In `Stato prenotazione`** le righe vengono filtrate (solo il proprio
+`wa_id`, niente `annullata`, solo dal presente in poi con mezz'ora di
+tolleranza), ordinate per data e formattate in italiano, e finiscono in
+una nota `[AGENDA DI QUESTO CLIENTE, letta ORA dal gestionale ...]`.
+
+Dettagli che contano:
+
+- **Il foglio restituisce `wa_id` come NUMERO**, non come testo (verificato
+  sull'esecuzione 71282): il confronto è su `String(r.wa_id) === wa`.
+- La nota è **lunga solo quando serve**: se il cliente non sta chiedendo
+  dell'agenda compare il solo prossimo appuntamento più il conteggio degli
+  altri. Ripetere l'elenco intero a ogni messaggio rifarebbe il danno del
+  Round 13 sulla finestra di memoria.
+- **Se la lettura fallisce** (`agendaLetta = false`) la nota non viene
+  emessa affatto: nessuna affermazione sull'agenda, si torna al
+  comportamento precedente. Mai dire "non ha prenotazioni" per un errore
+  di rete.
+- I nomi spazzatura dei test (`[non disponibile]`) non vengono mostrati.
+- `fastConfirm` ora si costruisce dal gestionale, e si **disattiva** con
+  più di un appuntamento futuro: con quattro righe in agenda non può
+  sapere a quale si riferisce "è confermato?", e nominerebbe quello
+  sbagliato. In quel caso risponde l'agente, che ha la lista completa.
+
+### Verifica
+
+Il nodo è stato eseguito davvero (esecuzione 71282, non simulata) e ha
+restituito le 31 righe del numero di test: il filtro sul foglio funziona.
+Poi 7 casi provati sul codice effettivamente pubblicato, usando quelle
+righe reali: domanda con stato sporco, messaggio normale, cliente senza
+prenotazioni, lettura fallita, conferma rapida ambigua, conferma rapida
+con un solo appuntamento, e righe di un altro numero (mai mostrate).
+Rieseguiti anche gli 8 test del Round 15: tutti passati.
+
+Pubblicato: `activeVersionId 26789246-243d-4e60-948c-99dabed9ef44`.
+
+### Resta aperto
+
+Winfarm riguarda l'altra metà del gestionale — prodotti, prezzi,
+giacenze, oggi il foglio `Listino` mantenuto a mano. Da decidere quando
+il farmacista dice cosa il suo software sa esportare.

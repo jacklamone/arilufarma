@@ -290,14 +290,67 @@ try {
 
   data.booking[wa] = st;
 
+  // AGENDA REALE, letta dal nodo 'Leggi Prenotazioni cliente' sul foglio
+  // Prenotazioni del gestionale, filtrata sul numero di chi sta scrivendo.
+  // E' la fonte di verita': lo stato tenuto in memoria qui sopra serve solo a
+  // seguire la conversazione in corso, e se si sporca (7 settembre) il cliente
+  // deve comunque ricevere la risposta giusta. Il foglio restituisce wa_id
+  // come NUMERO, non come testo: il confronto va fatto su String().
+  let agenda = [];
+  let agendaLetta = false;
+  try {
+    const righe = $('Leggi Prenotazioni cliente').all().map((i) => (i && i.json) || {});
+    agendaLetta = !righe.some((r) => r && r.error);
+    // Mezz'ora di tolleranza: un appuntamento appena iniziato va ancora
+    // mostrato a chi scrive "sto arrivando".
+    const soglia = Date.now() - 30 * 60 * 1000;
+    agenda = righe
+      .filter((r) => String(r.wa_id || '') === wa)
+      .filter((r) => String(r.stato || '').toLowerCase().indexOf('annullat') === -1)
+      .filter((r) => {
+        const t = Date.parse(String(r.inizio || ''));
+        return !isNaN(t) && t >= soglia;
+      })
+      .sort((a, b) => String(a.inizio).localeCompare(String(b.inizio)));
+  } catch (e) {
+    agendaLetta = false;
+  }
+
+  function fmtAppuntamento(iso) {
+    const gg = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
+    const mm = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+    try {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Rome', weekday: 'short', year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(d).map((x) => [x.type, x.value]));
+      const wd = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[p.weekday];
+      const ore = p.hour === '24' ? '00' : p.hour;
+      return gg[wd] + ' ' + Number(p.day) + ' ' + mm[Number(p.month) - 1] + ' alle ' + ore + ':' + p.minute;
+    } catch (e) {
+      return String(iso);
+    }
+  }
+
   // Senza NESSUN campo noto la risposta rapida sarebbe «Sì, è confermato ✅ .»:
   // una conferma vuota. In quel caso si lascia rispondere l'agente.
   const dettagliSalvati = [st.servizio, st.giorno, st.ora, st.nome].filter(Boolean).join(', ');
 
-  const fastConfirm = !newIntent && !isGreeting && !!st.booked && asksConfirm && !!dettagliSalvati;
-  const fastText = fastConfirm
-    ? ('Sì, è confermato ✅\n' + [st.servizio, st.nome && ('per ' + st.nome), st.giorno, st.ora && ('alle ' + st.ora)].filter(Boolean).join(' ') + '.')
-    : '';
+  // Con PIU' di un appuntamento futuro la risposta rapida non puo' sapere a
+  // quale si riferisce "e confermato?": sceglierebbe il primo e potrebbe
+  // nominare quello sbagliato. In quel caso risponde l'agente, che ha la
+  // lista completa nella nota.
+  const nomeUtile = (n) => {
+    const s = String(n || '').trim();
+    return s && !/^\[|non disponibile/i.test(s) ? s : '';
+  };
+  const fastConfirm = !newIntent && !isGreeting && asksConfirm && (agenda.length === 1 || (agenda.length === 0 && !!st.booked && !!dettagliSalvati));
+  // Quando il gestionale ha la riga, la conferma rapida si costruisce da
+  // quella e non dallo stato in memoria.
+  const fastText = !fastConfirm
+    ? ''
+    : agenda.length === 1
+      ? ('Sì, è confermato ✅\n' + [String(agenda[0].tipo || 'Appuntamento'), nomeUtile(agenda[0].nome) && ('per ' + nomeUtile(agenda[0].nome)), fmtAppuntamento(agenda[0].inizio)].filter(Boolean).join(' ') + '.')
+    : ('Sì, è confermato ✅\n' + [st.servizio, st.nome && ('per ' + st.nome), st.giorno, st.ora && ('alle ' + st.ora)].filter(Boolean).join(' ') + '.');
 
   // La decisione sul promemoria va SEMPRE riportata all'agente, altrimenti
   // continua a richiederla a ogni messaggio (il prompt gli impone di chiederla
@@ -343,7 +396,30 @@ try {
     note = ' [PRENOTAZIONE: ' + bits.join(' ') + ']';
   }
 
-  return pack(note, st, fastConfirm, fastText);
+  // La nota lunga con l'istruzione esplicita parte SOLO quando il cliente sta
+  // davvero chiedendo dei suoi appuntamenti: ripetere un blocco fisso in ogni
+  // messaggio riempie la finestra di memoria della conversazione (Round 13).
+  const chiedeAgenda = /(mi ricord|cosa ho prenotat|che ho prenotat|quando ho|a che ora|ho (un |qualche )?appuntament|miei appuntament|mia prenotazion|mie prenotazion|promemoria|e confermat|gia prenotat|quando devo venire|quando vengo|ricordarmi)/.test(lastUser);
+
+  let agendaNote = '';
+  if (agendaLetta && agenda.length) {
+    // Se il cliente NON sta chiedendo dell'agenda basta il prossimo
+    // appuntamento: serve solo a non riprenotare la stessa cosa. Ripetere
+    // l'elenco intero in ogni messaggio riempirebbe la memoria per niente.
+    const quanti = chiedeAgenda ? 5 : 1;
+    const voci = agenda.slice(0, quanti).map((r) => {
+      const nm = nomeUtile(r.nome);
+      return [String(r.tipo || 'appuntamento'), fmtAppuntamento(r.inizio), nm ? 'a nome ' + nm : ''].filter(Boolean).join(' ');
+    });
+    agendaNote = ' [AGENDA DI QUESTO CLIENTE, letta ORA dal gestionale (dato certo, riguarda solo lui): ' + voci.join(' | ') + '.';
+    agendaNote += chiedeAgenda
+      ? ' Sta chiedendo proprio questo: rispondi SUBITO indicando servizio, giorno e ora di TUTTI quelli elencati. VIETATO rispondere «posso verificare», «se vuole controllo» o rimandare al messaggio dopo.]'
+      : (agenda.length > 1 ? ' (e altri ' + (agenda.length - 1) + ').' : '') + ' Non ricrearli in calendario e non citarli se non serve.]';
+  } else if (agendaLetta && chiedeAgenda) {
+    agendaNote = ' [AGENDA DI QUESTO CLIENTE, letta ORA dal gestionale: nessun appuntamento futuro a questo numero. Dillo con chiarezza e offri di prenotarne uno: non inventare appuntamenti e non dire che devi verificare.]';
+  }
+
+  return pack(note + agendaNote, st, fastConfirm, fastText);
 } catch (e) {
   return pack('', empty, false, '');
 }

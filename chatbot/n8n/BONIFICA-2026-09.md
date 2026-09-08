@@ -1907,3 +1907,95 @@ accorcia da solo.
 - Mostrare il risultato **prima** di pubblicare, non dopo.
 - Confronto riga per riga fra codice pubblicato e file nel repo **sempre**
   prima di pubblicare, non solo quando si sospetta un problema.
+
+---
+
+## Scelta di architettura per il multi-farmacia (deciso l'8 settembre)
+
+Scenario: se l'integrazione con Winfarm non va in porto, il gestionale
+resta Google Sheet + Google Calendar anche per le farmacie successive.
+
+### Decisione del titolare
+
+**Ogni farmacia possiede tutto il proprio**: il numero WhatsApp con il suo
+account Meta, e un account Google suo con foglio e calendario. L'agenzia
+non possiede né gestisce gli account dei clienti.
+
+Questa scelta **corregge** quanto proposto il giorno prima (un account
+Google dell'agenzia con accesso a tutti i file): è più comoda per noi ma
+sbagliata come impostazione.
+
+### Il vincolo tecnico e la via d'uscita
+
+In n8n **la credenziale di un nodo è fissa**: non si sceglie con
+un'espressione. Quindi "dieci account Google" e "un workflow solo" non
+stanno insieme in modo diretto.
+
+Soluzione: **file di proprietà della farmacia, accesso delegato a noi.**
+La farmacia crea il proprio account Google, il proprio foglio e il proprio
+calendario da un modello, e li **condivide** con un unico account tecnico
+dell'agenzia.
+
+- i file restano di proprietà loro, nel loro Drive
+- la revoca è un clic, in qualsiasi momento, senza passare da noi
+- noi usiamo **una sola credenziale** per tutte le farmacie → il workflow
+  unico regge
+
+### WhatsApp
+
+La farmacia possiede il numero e il proprio account Meta, e autorizza la
+nostra app sul suo WhatsApp Business Account. Il webhook è lo stesso per
+tutte: a distinguerle è `metadata.phone_number_id`, già presente in ogni
+messaggio in arrivo e già letto dal workflow.
+
+Sull'invio, due casi:
+- **un unico token** che copre tutti i numeri autorizzati → il nodo
+  `Send message` attuale va bene, basta rendere `phoneNumberId`
+  un'espressione dal registro;
+- **un token per farmacia** → l'invio si rifà con un nodo HTTP che legge
+  il token dal registro. Schema **già in funzione in questo workflow**
+  (`Invia_informativa_privacy`), quindi non è un salto nel buio.
+
+In entrambi i casi l'architettura non cambia.
+
+### Quello che va detto con onestà
+
+"Non gestiamo niente" non è del tutto raggiungibile. Restano comunque in
+capo all'agenzia: le chiavi di collegamento, il server su cui gira n8n, e
+il registro delle conversazioni che vi transitano.
+
+La frase vera, e commercialmente valida, è: *«Il numero è suo, l'account
+Google è suo, i dati dei suoi pazienti sono nel suo Drive. Noi abbiamo un
+accesso che lei può togliere quando vuole.»*
+
+**Serve comunque un contratto da responsabile del trattamento con ciascuna
+farmacia**, perché trattiamo dati di pazienti per loro conto — vale anche
+con questa impostazione, e va preparato prima del secondo cliente. Sono
+appuntamenti sanitari, non una lista di contatti.
+
+L'unica alternativa per non avere accesso a nulla sarebbe un n8n per ogni
+farmacia: ci riporta alle dieci copie, cioè alla cosa da evitare.
+
+### Due rischi che nascono dal fatto che i file sono loro
+
+1. **Possono rompere il gestionale senza accorgersene**: rinominare una
+   scheda, spostare una colonna, togliere la condivisione. Serve un
+   controllo automatico giornaliero che verifichi che fogli e calendario
+   siano leggibili e che avvisi l'agenzia, non il cliente.
+2. **Account Google personale del titolare**: se usa la sua Gmail privata
+   e domani la abbandona, il bot si spegne. In fase di attivazione va
+   imposto un account dedicato della farmacia.
+
+### Attivazione di una farmacia nuova (da trasformare in procedura)
+
+1. La farmacia crea un account Google **dedicato** (non personale).
+2. Copia del foglio gestionale e del calendario da un modello.
+3. Condivisione di entrambi con l'account tecnico dell'agenzia.
+4. Autorizzazione della nostra app Meta sul loro WhatsApp Business Account.
+5. Una riga nel registro Clienti: `phone_number_id` → nome, id foglio,
+   id calendario, link privacy.
+6. Firma del contratto da responsabile del trattamento.
+
+Se questi sei passi restano manuali sono mezza giornata a cliente: dieci
+clienti, cinque giornate. Se diventano una procedura guidata sono dieci
+minuti. È lì che si decide se il prodotto scala.

@@ -1458,3 +1458,70 @@ dopo l'elenco (legge il messaggio del cliente, non la lista).
 Pubblicato: `activeVersionId 321b39d6-d667-4dec-b768-32fefba680ea`.
 Il primo tentativo di pubblicazione è fallito per un errore DNS del
 server, ripetuto subito dopo con esito positivo.
+
+---
+
+## Round 20 — il messaggio unico non partiva: rollback (8 settembre)
+
+Primo test dopo il reset dello stato: il titolare scrive "Buongiorno" alle
+09:35 e **non riceve niente**.
+
+### Cosa dice l'esecuzione 71392
+
+```
+WhatsApp Trigger            -> "Buongiorno"                 ok
+AI Agent / Normalizza       -> testo di benvenuto prodotto  ok
+Privacy dopo il benvenuto?  -> uscita 0 (primo messaggio)   ok
+Invia_informativa_privacy   -> stato "success", 1018 ms, output VUOTO
+Send message                -> NON eseguito
+```
+
+Il nodo privacy risulta riuscito ma non ha prodotto nulla, e nel
+`contextData` non c'è la risposta di Meta con il `wamid` che invece
+compariva nelle esecuzioni in cui il messaggio arrivava davvero
+(es. 71282). Il messaggio non è partito.
+
+### Perché la rete di sicurezza non è servita
+
+`Invia_informativa_privacy (auto)` è un `httpRequestTool`, non un
+`httpRequest`: usato nel flusso principale **non emette item e non
+segnala l'errore**. Il ramo `onError: continueErrorOutput` collegato a
+`Send message` non è quindi mai scattato, perché per n8n il nodo era
+andato a buon fine. Una rete di sicurezza che dipende dall'errore non
+funziona su un nodo che non lo dichiara.
+
+Prima del Round 18 questo non si notava: `Send message` inviava il
+benvenuto **prima**, e la privacy era un di più. Spostandola davanti,
+l'unico messaggio del primo contatto è diventato quello che non parte.
+
+### Rollback
+
+Ripristinato il cablaggio precedente e il corpo statico del messaggio
+privacy:
+
+```
+Normalizza risposta -> Send message -> Privacy dopo il benvenuto? -> privacy (auto)
+```
+
+Restano due messaggi al primo contatto, come prima. Ripristinata anche la
+nota di sistema nel prompt ("il pulsante parte subito dopo questa tua
+risposta") e `onError: continueRegularOutput` sul nodo privacy.
+
+`Send message` mantiene il miglioramento del Round 18: legge il testo da
+`$('Normalizza risposta')` invece che da `$json`, così non dipende
+dall'item che riceve in ingresso.
+
+Tutte le correzioni dei Round 15-19 (stato vuoto, agenda dal gestionale,
+elenco che non contamina lo stato) sono rimaste al loro posto: verificato
+sulla versione pubblicata.
+
+Pubblicato: `activeVersionId e347295e-5129-4ee0-9b77-4feebb34baa8`.
+
+### Da fare per riprovare il messaggio unico
+
+Serve prima capire perché Meta rifiuta il corpo dinamico, e per vederlo
+serve un nodo che riporti la risposta HTTP: `Invia_informativa_privacy
+(auto)` va convertito da `httpRequestTool` a `httpRequest` normale. Il
+connettore MCP non riesce ad assegnare la credenziale `whatsAppApi` a un
+nodo `httpRequest` (limite noto, vedi round precedenti), quindi quel
+passaggio va fatto a mano nell'interfaccia n8n.

@@ -1525,3 +1525,80 @@ serve un nodo che riporti la risposta HTTP: `Invia_informativa_privacy
 connettore MCP non riesce ad assegnare la credenziale `whatsAppApi` a un
 nodo `httpRequest` (limite noto, vedi round precedenti), quindi quel
 passaggio va fatto a mano nell'interfaccia n8n.
+
+---
+
+## Round 21 — messaggio unico, la causa era un a-capo (8 settembre)
+
+Ripreso il tentativo del Round 18-20 dopo aver trovato il modo di vedere
+l'errore.
+
+### Come si è visto l'errore
+
+`Invia_informativa_privacy (auto)` è un `httpRequestTool`: nel flusso
+principale non ha un'uscita di errore, quindi `continueErrorOutput`
+faceva sparire il problema (Round 20). Rimesso `onError:
+continueRegularOutput`, l'errore è invece finito nell'item di uscita, ed
+è comparso in chiaro nell'esecuzione 71448:
+
+```json
+{"error": "invalid syntax"}
+```
+
+Non era Meta a rifiutare: era n8n che non riusciva a **compilare
+l'espressione**.
+
+### La causa
+
+Nel corpo dinamico avevo scritto la concatenazione così:
+
+```js
+String($json.output || '').slice(0, 820) + '\n\nTrattiamo i tuoi dati...'
+```
+
+ma la sequenza `\n` inviata via connettore MCP viene **decodificata a un
+a-capo reale prima di essere salvata** (stesso fenomeno già documentato
+per `✅` nel Round 15). Sul server l'espressione conteneva quindi un
+ritorno a capo vero dentro una stringa fra apici singoli — che in
+JavaScript è un errore di sintassi. Il nodo falliva sempre, in silenzio.
+
+**Regola da ricordare:** per far arrivare una sequenza di escape dentro
+un'espressione n8n passando dal connettore, va inviata raddoppiata
+(`\\n`), altrimenti diventa il carattere vero e rompe la stringa.
+
+### Altre due correzioni nello stesso giro
+
+- Il corpo legge ora `$json.output` invece di
+  `$('Normalizza risposta').first().json.output`: il nodo riceve già
+  quell'item in ingresso dall'IF, quindi il riferimento incrociato era
+  inutile.
+- Tolti `retryOnFail` e l'uscita di errore verso `Send message`: su un
+  nodo tool quella rete di sicurezza non può funzionare, e mascherava il
+  guasto invece di ripararlo.
+
+### Cablaggio finale
+
+```
+Normalizza risposta -> Privacy dopo il benvenuto?
+                        |-- uscita 0 (primo messaggio) --> privacy (auto)  [benvenuto + privacy + pulsante, UN messaggio]
+                        |-- uscita 1 (già visto)       --> Send message    [solo testo]
+```
+
+### Verifica
+
+Espressione compilata e valutata fuori da n8n con un testo di benvenuto
+reale: corpo di 259 caratteri (limite WhatsApp 1024), pulsante e URL
+corretti. Poi test reale (esecuzione 71452, dopo un reset dello stato):
+`Invia_informativa_privacy (auto)` ha restituito la risposta di Meta con
+il `wamid`, e `Send message` **non è stato eseguito**. Un solo messaggio,
+consegnato.
+
+Pubblicato: `activeVersionId b6b7cb19-cf39-474f-98f3-1b93a8a5d7ac`.
+
+### Nota sul reset
+
+Ogni test consuma il segno "cliente già visto", che viene scritto a fine
+esecuzione **anche quando l'invio non è andato a buon fine**. È il motivo
+per cui il reset delle 09:16 è sembrato non aver funzionato: se l'era
+mangiato il test fallito delle 09:35. Da valutare se spostare quel segno
+dopo l'invio riuscito.

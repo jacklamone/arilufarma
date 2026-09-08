@@ -754,7 +754,7 @@
         "nodeCredentialType": "whatsAppApi",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('WhatsApp Trigger').first().json.messages[0].from, type: 'interactive', interactive: { type: 'cta_url', body: { text: 'Trattiamo i tuoi dati secondo la nostra informativa sulla privacy. Puoi leggerla qui sotto 👇' }, action: { name: 'cta_url', parameters: { display_text: 'Apri l’informativa', url: 'https://arilufarma.netlify.app/privacy.html' } } } }) }}",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $('WhatsApp Trigger').first().json.messages[0].from, type: 'interactive', interactive: { type: 'cta_url', body: { text: String($json.output || '').slice(0, 820) + '\\n\\nTrattiamo i tuoi dati secondo la nostra informativa sulla privacy. Puoi leggerla qui sotto 👇' }, action: { name: 'cta_url', parameters: { display_text: 'Apri l’informativa', url: 'https://arilufarma.netlify.app/privacy.html' } } } }) }}",
         "options": {}
       },
       "id": "9a71a3d4-dcd7-4fcd-9344-ed60ed92994a",
@@ -1780,7 +1780,7 @@
             "index": 0
           },
           {
-            "node": "Send message",
+            "node": "Privacy dopo il benvenuto?",
             "type": "main",
             "index": 0
           }
@@ -1879,14 +1879,9 @@
             "index": 0
           }
         ],
-        []
-      ]
-    },
-    "Send message": {
-      "main": [
         [
           {
-            "node": "Privacy dopo il benvenuto?",
+            "node": "Send message",
             "type": "main",
             "index": 0
           }

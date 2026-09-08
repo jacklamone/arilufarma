@@ -1333,3 +1333,50 @@ Pubblicato: `activeVersionId 26789246-243d-4e60-948c-99dabed9ef44`.
 Winfarm riguarda l'altra metà del gestionale — prodotti, prezzi,
 giacenze, oggi il foglio `Listino` mantenuto a mano. Da decidere quando
 il farmacista dice cosa il suo software sa esportare.
+
+---
+
+## Round 18 — benvenuto e privacy in un solo messaggio (8 settembre)
+
+Richiesta del titolare: all'apertura della conversazione arrivavano due
+messaggi separati (il benvenuto e poi la privacy col pulsante). Devono
+essere uno solo.
+
+Il messaggio privacy è un `interactive` di tipo `cta_url`, e un `cta_url`
+ha un proprio corpo di testo: il benvenuto può stare lì dentro, sopra il
+pulsante. Serviva quindi solo spostare il testo, non aggiungere nodi.
+
+### Cablaggio, prima e dopo
+
+```
+PRIMA:  Normalizza risposta -> Send message -> Privacy dopo il benvenuto? -> privacy (auto)
+DOPO:   Normalizza risposta -> Privacy dopo il benvenuto?
+                                 |-- uscita 0 (primo messaggio) --> privacy (auto)   [benvenuto + privacy + pulsante]
+                                 |-- uscita 1 (già visto)       --> Send message     [solo testo]
+        privacy (auto) --[uscita errore]--> Send message
+```
+
+Il ramo `Normalizza risposta -> Log conversazione`, da cui passano lo
+stato e il registro, non è stato toccato: `Send message` era una foglia.
+
+### Dettagli
+
+- Il corpo del messaggio interattivo ora è
+  `output dell'AI` + riga vuota + frase privacy + pulsante, con il testo
+  dell'AI troncato a 880 caratteri (il limite del corpo `cta_url` è 1024).
+- **Rete di sicurezza**: `onError: continueErrorOutput` sul nodo privacy,
+  con l'uscita di errore collegata a `Send message`. Se l'invio
+  interattivo fallisce, il cliente riceve comunque il benvenuto come
+  testo semplice. Senza questo, un errore sul primo messaggio lascerebbe
+  il cliente senza nessuna risposta — è già successo il 5 settembre con
+  le credenziali mancanti nella copia di confronto.
+- `Send message` non legge più `$json.output` ma
+  `$('Normalizza risposta').first().json.output`: così funziona anche
+  quando l'input è l'item di errore del nodo privacy.
+- La nota di sistema nel prompt è stata corretta: prima diceva che il
+  pulsante "parte da solo subito dopo questa tua risposta", ora dice che
+  privacy e pulsante sono aggiunti in fondo allo STESSO messaggio e che
+  l'agente non deve scrivere nulla sulla privacy né annunciare il
+  pulsante.
+
+Pubblicato: `activeVersionId 5652d2b7-4a1e-4d3f-816f-88339ff1b3cf`.

@@ -57,7 +57,14 @@ try {
       const label = String(r.nome || '').trim();
       if (!label) continue;
       const n = norm(label);
-      const keys = [n, ...n.split(/[^a-z0-9]+/).filter((tok) => tok.length >= 4)];
+      // Un token singolo vale come chiave SOLO se il servizio ha un nome di una
+      // parola sola. Da 'Analisi capelli e pelle' usciva la chiave 'pelle', che
+      // faceva scattare il servizio su 'crema per pelle sensibile' (8 settembre,
+      // esecuzione 72013). I nomi composti restano raggiungibili per nome intero
+      // o tramite gli alias.
+      const parole = n.split(/[^a-z0-9]+/).filter(Boolean);
+      const keys = [n];
+      if (parole.length === 1 && parole[0].length >= 4) keys.push(parole[0]);
       if (r.alias) {
         for (const a of String(r.alias).split(/[,;|/]+/).map(norm).filter(Boolean)) {
           if (!keys.includes(a)) keys.push(a);
@@ -112,6 +119,9 @@ try {
       const after = t.slice(m.index + m[0].length, m.index + m[0].length + 12);
       if (/\b(di|ho|ha|abbiamo|hanno|compi[eo])\s*$/.test(before)) continue;
       if (/^\s*(anni|anno|persone|volte|mesi|giorni|euro|kg|chili|cm|gradi|compresse|gocce|ml|mg)\b/.test(after)) continue;
+      // '14,90 euro' non sono le 14:00: un numero con decimali e un prezzo
+      // (8 settembre, esecuzione 72009).
+      if (/^\s*[,.]\d/.test(after)) continue;
       return String(h).padStart(2, '0') + ':' + (m[2] || '00');
     }
     return '';
@@ -244,8 +254,7 @@ try {
   if (/\bdomani\b/.test(lastUser)) st.giorno = weekdayRome(1);
 
   // Quando la prenotazione e' gia' salvata non si ri-estraggono i campi dal
-  // testo: si conserva lo stato cosi' com'e'. (Qui c'era una riscrittura
-  // cablata di giorno/ora per un cliente specifico: rimossa.)
+  // testo: si conserva lo stato cosi' com'e'.
   //
   // Quando invece parte una prenotazione NUOVA (cambio servizio o intento
   // esplicito), l'ultimo messaggio del bot appartiene ancora alla prenotazione
@@ -255,16 +264,8 @@ try {
   // E l'ultimo messaggio del bot va letto SOLO se era una proposta di
   // appuntamento. Se era l'ELENCO delle prenotazioni gia' esistenti, i
   // servizi, i giorni e gli orari che contiene non sono una richiesta del
-  // cliente: leggerli significa inventare una prenotazione mai chiesta.
-  // Osservato in produzione l'8 settembre (esecuzioni 71345 e 71349): dalla
-  // lista di 5 appuntamenti appena letta dal gestionale lo stato aveva
-  // estratto "Profilo lipidico, martedi, 08:00" (il servizio della terza
-  // riga, il giorno della prima, e l'8 di "martedi 8 settembre" preso per
-  // le 08:00), e il bot ha iniziato a chiedere il nome per confermare una
-  // prenotazione che nessuno aveva chiesto.
-  // Due o piu' giorni diversi, o tre o piu' orari diversi, sono un elenco:
-  // anche quando sono slot proposti, sceglierne uno a caso sarebbe comunque
-  // sbagliato, quindi in entrambi i casi e' giusto non leggere niente.
+  // cliente: leggerli significa inventare una prenotazione mai chiesta
+  // (8 settembre, esecuzioni 71345 e 71349).
   function sembraElenco(t) {
     if (!t) return false;
     if (/(ha queste prenotazioni|le sue prenotazioni|ecco le sue|risultano queste|le risultano|ha prenotato:)/.test(t)) return true;
@@ -272,25 +273,50 @@ try {
     if (giorni.filter((g) => t.indexOf(g) !== -1).length >= 2) return true;
     return new Set(t.match(/\b\d{1,2}[:.]\d{2}\b/g) || []).size >= 3;
   }
-  const botElenco = sembraElenco(norm(botTexts[botTexts.length - 1] || ''));
+  const ultimoBot = norm(botTexts[botTexts.length - 1] || '');
+  const botElenco = sembraElenco(ultimoBot);
+
+  // L'ultimo messaggio del bot si legge SOLO se e' davvero una PROPOSTA di
+  // appuntamento: deve contenere un giorno o un orario esplicito insieme a una
+  // parola che indica la proposta. Una risposta di listino non lo e', e finiva
+  // per riempire lo stato di dati falsi: la conversazione sulle creme dell'8
+  // settembre (esecuzioni 72004-72036, nessuna prenotazione chiesta) aveva
+  // prodotto servizio 'Analisi capelli e pelle' e ora '14:00', quest'ultima
+  // dal prezzo '14,90 euro'.
+  function sembraProposta(t) {
+    if (!t) return false;
+    const haOrario = /\b\d{1,2}[:.]\d{2}\b|\balle \d{1,2}\b/.test(t);
+    const haGiorno = /(lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|domani|oggi)/.test(t);
+    const haProposta = /(propon|le propongo|disponibil|va bene|slot|libero|liberi|posso fissare|fissiamo|prenot|appuntament|conferm)/.test(t);
+    return (haOrario || haGiorno) && haProposta;
+  }
+  const botProposta = sembraProposta(ultimoBot);
 
   if (!(st.booked && !newIntent)) {
-    const textsToScan = (freshBooking || botElenco) ? clientTexts : botTexts.concat(clientTexts);
+    const textsToScan = (freshBooking || botElenco || !botProposta) ? clientTexts : botTexts.concat(clientTexts);
     for (const text of textsToScan) {
       const sv = findServizio(text);
       if (sv && !st.servizio) st.servizio = sv;
       const g = findGiorno(text); if (g) st.giorno = g;
       const o = findOra(text); if (o) st.ora = o;
     }
-    for (const text of clientTexts) {
-      const nm = findName(text);
-      if (nm && nm.length <= 40) st.nome = nm;
+    // Il nome si raccoglie SOLO quando il bot lo ha appena chiesto, o quando il
+    // cliente si presenta da solo. Senza questo vincolo qualunque frase di due
+    // o tre parole diventava un nome: 'Cerchi inci preciso' era finito nello
+    // stato come nome del cliente (8 settembre, esecuzione 72036).
+    const botHaChiestoNome = /nome e cognome|il suo nome|a che nome|come si chiama|mi dice il nome/.test(ultimoBot);
+    const siPresenta = /(mi chiamo|sono io|il mio nome|il mio cognome|cognome)/.test(lastUser);
+    if (botHaChiestoNome || siPresenta) {
+      for (const text of clientTexts) {
+        const nm = findName(text);
+        if (nm && nm.length <= 40) st.nome = nm;
+      }
     }
   }
   if (/\boggi\b/.test(lastUser)) st.giorno = weekdayRome(0);
   if (/\bdomani\b/.test(lastUser)) st.giorno = weekdayRome(1);
 
-  const lastBot = norm(botTexts[botTexts.length - 1] || '');
+  const lastBot = ultimoBot;
   const yes = ack;
   const no = /^(no)$/.test(lastUser);
   if (/promemoria/.test(lastBot)) st.reminderAsked = true;
@@ -348,12 +374,11 @@ try {
   // Il foglio Prenotazioni tiene solo il tipo generico ("Ritiro prodotto"): il
   // dettaglio — QUALE prodotto — sta nella descrizione dell'evento di
   // calendario ("Ritiro prodotto: Oral-B Pro 3. Cliente: Luciano Fratelli.").
-  // Il cliente lo chiede e il bot non lo sapeva (8 settembre, esec. 71479).
   // Si abbina rigorosamente per event_id, mai per titolo: cosi' non si puo'
-  // finire a leggere l'evento di un altro cliente.
-  // Il nodo che legge il calendario costa circa 7 secondi, quindi gira solo
-  // quando il cliente sta parlando dei suoi appuntamenti: se non ha girato,
-  // questa mappa resta vuota e la nota esce senza dettaglio.
+  // finire a leggere l'evento di un altro cliente. Il nodo che legge il
+  // calendario costa circa 7 secondi, quindi gira solo quando il cliente sta
+  // parlando dei suoi appuntamenti: se non ha girato, questa mappa resta vuota
+  // e la nota esce senza dettaglio.
   let descrizioneEvento = {};
   try {
     for (const it of $('Leggi eventi calendario').all()) {
@@ -461,8 +486,6 @@ try {
   // messaggio riempie la finestra di memoria della conversazione (Round 13).
   // Vale anche per le domande di SEGUITO: dopo che il bot ha elencato le
   // prenotazioni, "a che nome?" o "quale?" riguardano ancora quell'elenco.
-  // Senza questo l'agente si ritrovava la nota corta (una riga sola) e
-  // improvvisava (esecuzioni 71345 e 71349 dell'8 settembre).
   const chiedeAgenda = /(mi ricord|cosa ho prenotat|che ho prenotat|quando ho|a che ora|a che nome|ho (un |qualche )?appuntament|miei appuntament|mia prenotazion|mie prenotazion|prenoarzion|promemoria|e confermat|gia prenotat|quando devo venire|quando vengo|ricordarmi)/.test(lastUser)
     || (botElenco && /\?/.test(String(rawMsg || '')));
 

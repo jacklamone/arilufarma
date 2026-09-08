@@ -1678,3 +1678,76 @@ codice di `Stato prenotazione`. Il workflow era in bozza e non è mai
 andato in produzione in quello stato, ma è la ragione per cui la verifica
 riga per riga fra codice pubblicato e file nel repo va fatta **sempre**
 prima di pubblicare, non solo quando si sospetta un problema.
+
+---
+
+## Round 23 — una chiacchierata sul listino sporcava la prenotazione (8 settembre)
+
+Conversazione del titolare alle 17:30-17:35 (esecuzioni 72000-72036): nove
+messaggi, tutti sulle creme viso, **nessuna prenotazione richiesta**. Le
+risposte del bot erano corrette e utili. Ma lo stato, invisibile in chat,
+si è riempito di dati falsi.
+
+### Cosa è finito nello stato
+
+| messaggio del cliente | campo inventato | da dove |
+|---|---|---|
+| "Differenze?" | `ora: 14:00` | dal prezzo **"14,90 euro"** nella risposta del bot |
+| "Differenze tra caudalie e nutradeica" | `servizio: Analisi capelli e pelle` | dalla parola **"pelle"** in "per pelle sensibile" |
+| "Cerchi inci preciso" | `nome: Cerchi Inci Preciso` | tre parole, tutte lettere → preso per un nome |
+
+Alla fine la nota iniettata diceva: *"campi già detti: Analisi capelli e
+pelle, 14:00, Cerchi Inci Preciso. Non ririchiederli."* Una mina: alla
+prima richiesta di prenotazione il bot avrebbe dato per scelti servizio,
+orario e nome che nessuno aveva mai detto.
+
+### Le tre cause
+
+1. **`findOra` leggeva i prezzi.** `14,90` non contiene i due punti, quindi
+   la regex catturava `14` e l'esclusione sulle unità (`euro`) non scattava
+   perché fra il numero e la parola c'era `,90`.
+2. **Le chiavi dei servizi includevano i token singoli.** Da
+   "Analisi capelli e pelle" nascevano le chiavi `analisi`, `capelli`,
+   **`pelle`**: qualunque testo contenente "pelle" attivava il servizio.
+3. **`findName` accettava qualunque frase di 2-3 parole** fatta di sole
+   lettere, in qualsiasi momento della conversazione.
+
+Tutte e tre passavano dalla lettura dell'**ultimo messaggio del bot**, che
+veniva scandagliato sempre.
+
+### Fix
+
+- **`sembraProposta()`**: il messaggio del bot si legge SOLO se è davvero
+  una proposta di appuntamento — deve contenere un giorno o un orario
+  esplicito **insieme** a una parola di proposta. Una risposta di listino
+  non lo è. Questo chiude l'intera classe di problemi alla radice.
+- **`findOra`**: un numero seguito da virgola o punto e decimali è un
+  prezzo, non un orario.
+- **Chiavi dei servizi**: un token singolo vale come chiave solo se il
+  servizio ha un nome di **una parola sola** (Glicemia, Spirometria, MOC).
+  I nomi composti restano raggiungibili per nome intero o tramite gli alias
+  già definiti.
+- **Il nome si raccoglie solo quando serve**: se il bot lo ha appena
+  chiesto ("nome e cognome", "a che nome") o se il cliente si presenta
+  ("mi chiamo", "il mio cognome").
+
+### Verifica
+
+Ricostruita la conversazione reale delle creme, messaggio per messaggio,
+con il catalogo servizi vero, prima e dopo:
+
+```
+PRIMA:  7 messaggi su 9 hanno sporcato lo stato
+DOPO:   0
+```
+
+La riproduzione combacia esattamente con i log (`14:00` compare a
+"Differenze?", il servizio a "Differenze tra caudalie e nutradeica", il
+nome all'ultimo messaggio).
+
+Non-regressione su una prenotazione completa: "vorrei prenotare la
+spirometria" → giovedì → le 10 → "Mario Rossi" → promemoria sì. Tutti e
+cinque i campi raccolti correttamente, nota `[PRENOTAZIONE DA CONFERMARE]`
+regolare. Rieseguiti anche i test dei Round 15, 19 e 22: tutti passati.
+
+Pubblicato: `activeVersionId 5ccceb28-9837-46c6-ac2b-dc794f1aca2a`.

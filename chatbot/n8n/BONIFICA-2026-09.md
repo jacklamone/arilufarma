@@ -1380,3 +1380,81 @@ stato e il registro, non è stato toccato: `Send message` era una foglia.
   pulsante.
 
 Pubblicato: `activeVersionId 5652d2b7-4a1e-4d3f-816f-88339ff1b3cf`.
+
+---
+
+## Round 19 — l'elenco del bot rientrava come prenotazione (8 settembre)
+
+Prima conversazione dopo il Round 17. Le esecuzioni 71334, 71341, 71345 e
+71349 raccontano una cosa che funziona e una che si è rotta.
+
+**Funziona:** alle 08:57 alla domanda "Mi ricorda le mie prenoarzioni?"
+(con il refuso) il bot ha risposto SUBITO con tutti e cinque gli
+appuntamenti letti dal gestionale. È esattamente il comportamento che
+mancava il 7 settembre.
+
+**Si è rotta** la conversazione subito dopo:
+
+| cliente | bot |
+|---|---|
+| "A che nome?" | "Mi serve nome e cognome del paziente per la prenotazione." |
+| "Ritiro prodotto? Quale?" | "È una prenotazione per Profilo lipidico martedì alle 08:00. Mi serve solo nome e cognome per confermarla." |
+
+Lo stato al momento della seconda domanda:
+
+```json
+{"servizio":"Profilo lipidico","giorno":"martedì","ora":"08:00","nome":""}
+```
+
+Nessuno aveva mai chiesto un Profilo lipidico di martedì alle 8.
+
+### Causa
+
+`Stato prenotazione` estrae servizio, giorno e ora anche dall'ultimo
+messaggio del BOT (`data.lastBot`), perché serve a capire quale slot il
+cliente sta accettando quando risponde "sì". Ma dal Round 17 in poi il bot
+manda anche l'ELENCO delle prenotazioni esistenti, e quell'elenco è finito
+nell'estrattore:
+
+- `findServizio` → "Profilo lipidico" (la terza riga della lista)
+- `findGiorno` → "martedì" (prima voce dell'array giorni presente nel testo)
+- `findOra` → `08:00`, dall'`8` di "martedì **8** settembre"
+
+Il bot ha quindi iniziato a raccogliere i dati per una prenotazione
+inventata dal suo stesso messaggio precedente. È una regressione
+introdotta dal Round 17: l'estrattore era già fragile, ma prima il bot non
+produceva mai elenchi di appuntamenti.
+
+### Fix
+
+1. **`sembraElenco()`**: l'ultimo messaggio del bot NON viene letto quando
+   contiene frasi da elenco ("ha queste prenotazioni", "le sue
+   prenotazioni"...), **due o più giorni della settimana diversi**, o
+   **tre o più orari diversi**. Anche quando quei giorni sono slot
+   proposti, sceglierne uno a caso era comunque sbagliato: in entrambi i
+   casi è giusto non leggere niente. Una proposta singola
+   ("mercoledì alle 10:00, va bene?") continua a funzionare.
+2. **`chiedeAgenda` vale anche per le domande di seguito**: dopo che il
+   bot ha elencato le prenotazioni, qualsiasi domanda del cliente
+   (messaggio con "?") riceve di nuovo l'elenco completo con i nomi.
+   Prima "A che nome?" riceveva la nota corta di una riga e l'agente
+   improvvisava. Aggiunti anche "a che nome" e il refuso "prenoarzion".
+3. **`Salva_prenotazione`**: la colonna `tipo` chiedeva "Tipo di servizio
+   prenotato", e per i ritiri salvava la sola parola "Ritiro prodotto" —
+   ecco perché alla domanda "Ritiro prodotto? Quale?" non c'era risposta
+   possibile: il prodotto non era mai stato scritto. Ora la descrizione
+   impone il dettaglio ("Ritiro prodotto — Oral-B Pro 3"). Vale per le
+   prenotazioni nuove; quelle già in foglio restano generiche.
+
+### Verifica
+
+Riprodotto il guasto usando il testo esatto dell'elenco mandato alle 08:57
+(esecuzione 71341) come `lastBot`: con il codice pubblicato lo stato resta
+vuoto su entrambe le domande e la nota contiene l'agenda completa con i
+nomi. Provate anche le due non-regressioni: proposta singola + "sì"
+(l'estrazione funziona ancora) e richiesta di una prenotazione nuova
+dopo l'elenco (legge il messaggio del cliente, non la lista).
+
+Pubblicato: `activeVersionId 321b39d6-d667-4dec-b768-32fefba680ea`.
+Il primo tentativo di pubblicazione è fallito per un errore DNS del
+server, ripetuto subito dopo con esito positivo.

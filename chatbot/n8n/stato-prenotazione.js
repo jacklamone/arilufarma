@@ -245,8 +245,31 @@ try {
   // esplicito), l'ultimo messaggio del bot appartiene ancora alla prenotazione
   // VECCHIA appena chiusa: se citava un giorno o un'ora, contaminerebbe quella
   // nuova. In quel caso si legge solo cio' che il cliente ha scritto ORA.
+  //
+  // E l'ultimo messaggio del bot va letto SOLO se era una proposta di
+  // appuntamento. Se era l'ELENCO delle prenotazioni gia' esistenti, i
+  // servizi, i giorni e gli orari che contiene non sono una richiesta del
+  // cliente: leggerli significa inventare una prenotazione mai chiesta.
+  // Osservato in produzione l'8 settembre (esecuzioni 71345 e 71349): dalla
+  // lista di 5 appuntamenti appena letta dal gestionale lo stato aveva
+  // estratto "Profilo lipidico, martedi, 08:00" (il servizio della terza
+  // riga, il giorno della prima, e l'8 di "martedi 8 settembre" preso per
+  // le 08:00), e il bot ha iniziato a chiedere il nome per confermare una
+  // prenotazione che nessuno aveva chiesto.
+  // Due o piu' giorni diversi, o tre o piu' orari diversi, sono un elenco:
+  // anche quando sono slot proposti, sceglierne uno a caso sarebbe comunque
+  // sbagliato, quindi in entrambi i casi e' giusto non leggere niente.
+  function sembraElenco(t) {
+    if (!t) return false;
+    if (/(ha queste prenotazioni|le sue prenotazioni|ecco le sue|risultano queste|le risultano|ha prenotato:)/.test(t)) return true;
+    const giorni = ['lunedi','martedi','mercoledi','giovedi','venerdi','sabato','domenica'];
+    if (giorni.filter((g) => t.indexOf(g) !== -1).length >= 2) return true;
+    return new Set(t.match(/\b\d{1,2}[:.]\d{2}\b/g) || []).size >= 3;
+  }
+  const botElenco = sembraElenco(norm(botTexts[botTexts.length - 1] || ''));
+
   if (!(st.booked && !newIntent)) {
-    const textsToScan = freshBooking ? clientTexts : botTexts.concat(clientTexts);
+    const textsToScan = (freshBooking || botElenco) ? clientTexts : botTexts.concat(clientTexts);
     for (const text of textsToScan) {
       const sv = findServizio(text);
       if (sv && !st.servizio) st.servizio = sv;
@@ -399,7 +422,12 @@ try {
   // La nota lunga con l'istruzione esplicita parte SOLO quando il cliente sta
   // davvero chiedendo dei suoi appuntamenti: ripetere un blocco fisso in ogni
   // messaggio riempie la finestra di memoria della conversazione (Round 13).
-  const chiedeAgenda = /(mi ricord|cosa ho prenotat|che ho prenotat|quando ho|a che ora|ho (un |qualche )?appuntament|miei appuntament|mia prenotazion|mie prenotazion|promemoria|e confermat|gia prenotat|quando devo venire|quando vengo|ricordarmi)/.test(lastUser);
+  // Vale anche per le domande di SEGUITO: dopo che il bot ha elencato le
+  // prenotazioni, "a che nome?" o "quale?" riguardano ancora quell'elenco.
+  // Senza questo l'agente si ritrovava la nota corta (una riga sola) e
+  // improvvisava (esecuzioni 71345 e 71349 dell'8 settembre).
+  const chiedeAgenda = /(mi ricord|cosa ho prenotat|che ho prenotat|quando ho|a che ora|a che nome|ho (un |qualche )?appuntament|miei appuntament|mia prenotazion|mie prenotazion|prenoarzion|promemoria|e confermat|gia prenotat|quando devo venire|quando vengo|ricordarmi)/.test(lastUser)
+    || (botElenco && /\?/.test(String(rawMsg || '')));
 
   let agendaNote = '';
   if (agendaLetta && agenda.length) {

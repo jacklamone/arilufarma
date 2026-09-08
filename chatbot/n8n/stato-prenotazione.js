@@ -122,7 +122,10 @@ try {
     if (!t || /[?:;,]/.test(raw)) return null;
     if (/^(si|sì|no|ok|cok|k|ciao|buonasera|buongiorno|buon pomeriggio|grazie|prego|perfetto|certo|va bene|confermo)$/.test(t)) return null;
     if (/oggi|domani|detto|preferisco|libero|non sabato/.test(t)) return null;
-    if (/grazie|prego|reminder|promemoria|conferma|va bene|prenot|servizio|glicem|sabato|alle |figlia|figlio/.test(t) && !/cognome|profili|mi chiamo/.test(t)) return null;
+    // "Mi ricorda gli appuntamenti" (senza punto interrogativo) passava tutti i
+    // controlli e finiva registrato come nome del cliente: "Ricorda Gli
+    // Appuntamenti" (osservato in produzione l'8 settembre, esecuzione 71475).
+    if (/grazie|prego|reminder|promemoria|conferma|va bene|prenot|servizio|glicem|sabato|alle |figlia|figlio|ricord|appuntament|agenda|elenco|quale|quali|ritiro|scusi/.test(t) && !/cognome|profili|mi chiamo/.test(t)) return null;
     const parts = raw.split(/\s+/).filter((p) => !/^(il|mio|cognome|è|e|mi|chiamo)$/i.test(p));
     // Frasi comuni di due-tre parole, tutte lettere, non sono automaticamente
     // un nome: "buona giornata", "come va" passavano il resto dei controlli e
@@ -152,7 +155,10 @@ try {
     servizio: prev.servizio || '',
     giorno: prev.giorno || '',
     ora: prev.ora || '',
-    nome: prev.nome && String(prev.nome).length <= 40 && !/grazie|prego|sì grazie|ho detto|oggi/i.test(String(prev.nome)) ? prev.nome : '',
+    // Il filtro vale anche sul nome GIA' salvato: uno stato sporco da una
+    // conversazione precedente ("Ricorda Gli Appuntamenti", 8 settembre) va
+    // scartato alla rilettura, non solo bloccato in ingresso.
+    nome: prev.nome && String(prev.nome).length <= 40 && !/grazie|prego|sì grazie|ho detto|oggi|ricord|appuntament|agenda|elenco|prenotazion|ritiro/i.test(String(prev.nome)) ? prev.nome : '',
     reminder: prev.reminder || '',
     confirmed: !!prev.confirmed,
     reminderAsked: !!prev.reminderAsked,
@@ -339,6 +345,37 @@ try {
     agendaLetta = false;
   }
 
+  // Il foglio Prenotazioni tiene solo il tipo generico ("Ritiro prodotto"): il
+  // dettaglio — QUALE prodotto — sta nella descrizione dell'evento di
+  // calendario ("Ritiro prodotto: Oral-B Pro 3. Cliente: Luciano Fratelli.").
+  // Il cliente lo chiede e il bot non lo sapeva (8 settembre, esec. 71479).
+  // Si abbina rigorosamente per event_id, mai per titolo: cosi' non si puo'
+  // finire a leggere l'evento di un altro cliente.
+  // Il nodo che legge il calendario costa circa 7 secondi, quindi gira solo
+  // quando il cliente sta parlando dei suoi appuntamenti: se non ha girato,
+  // questa mappa resta vuota e la nota esce senza dettaglio.
+  let descrizioneEvento = {};
+  try {
+    for (const it of $('Leggi eventi calendario').all()) {
+      const e = (it && it.json) || {};
+      if (e.id) descrizioneEvento[String(e.id)] = String(e.description || '');
+    }
+  } catch (e) {}
+
+  // Si prende solo cio' che segue i due punti a inizio descrizione: e' la forma
+  // con cui il bot scrive il dettaglio. "Misurazione glicemia." o "Profilo
+  // lipidico per Lucio Fabri." non hanno due punti e non producono rumore.
+  function dettaglioDaCalendario(eventId, tipo) {
+    const d = String(descrizioneEvento[String(eventId || '')] || '').trim();
+    if (!d) return '';
+    const m = d.match(/^[^:.]{0,40}:\s*([^.]{2,80})/);
+    if (!m) return '';
+    const testo = m[1].trim().replace(/[,;\s]+$/, '');
+    if (!testo || /^cliente\b/i.test(testo)) return '';
+    if (norm(testo) === norm(tipo)) return '';
+    return testo;
+  }
+
   function fmtAppuntamento(iso) {
     const gg = ['domenica','lunedì','martedì','mercoledì','giovedì','venerdì','sabato'];
     const mm = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
@@ -437,7 +474,9 @@ try {
     const quanti = chiedeAgenda ? 5 : 1;
     const voci = agenda.slice(0, quanti).map((r) => {
       const nm = nomeUtile(r.nome);
-      return [String(r.tipo || 'appuntamento'), fmtAppuntamento(r.inizio), nm ? 'a nome ' + nm : ''].filter(Boolean).join(' ');
+      const tipo = String(r.tipo || 'appuntamento');
+      const dett = dettaglioDaCalendario(r.event_id, tipo);
+      return [dett ? tipo + ' (' + dett + ')' : tipo, fmtAppuntamento(r.inizio), nm ? 'a nome ' + nm : ''].filter(Boolean).join(' ');
     });
     agendaNote = ' [AGENDA DI QUESTO CLIENTE, letta ORA dal gestionale (dato certo, riguarda solo lui): ' + voci.join(' | ') + '.';
     agendaNote += chiedeAgenda

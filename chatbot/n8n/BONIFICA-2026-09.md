@@ -1602,3 +1602,79 @@ esecuzione **anche quando l'invio non è andato a buon fine**. È il motivo
 per cui il reset delle 09:16 è sembrato non aver funzionato: se l'era
 mangiato il test fallito delle 09:35. Da valutare se spostare quel segno
 dopo l'invio riuscito.
+
+---
+
+## Round 22 — il dettaglio del prodotto viene dal calendario (8 settembre)
+
+Il titolare chiede "Ritiro prodotto, quale prodotto devo ritirare" e il bot
+risponde che nell'agenda non è indicato. Nel calendario però il dettaglio
+c'è.
+
+### Dove sta il dato
+
+Letti i due gestionali con i connettori:
+
+| fonte | contenuto |
+|---|---|
+| foglio `Prenotazioni`, colonna `tipo` | `Ritiro prodotto` |
+| evento calendario, `summary` | `Ritiro prodotto — Luciano Fratelli` |
+| evento calendario, **`description`** | `Ritiro prodotto: Oral-B Pro 3. Cliente: Luciano Fratelli.` |
+
+L'agenda iniettata nel prompt (Round 17) legge solo il foglio, quindi il
+prodotto non le arrivava mai. La riga del foglio ha però l'`event_id`
+(`2ofg8opngsjklcmmbjljjkg8bo`), che è la chiave per ritrovare l'evento.
+
+### Intervento
+
+**Nuovo nodo `Leggi eventi calendario`** (Google Calendar, `getAll`, 90
+giorni, `alwaysOutputData`, `onError continueRegularOutput`). In
+`Stato prenotazione` si costruisce una mappa `event_id → description` e si
+estrae **solo ciò che segue i due punti a inizio descrizione**: è la forma
+con cui il bot scrive il dettaglio. `"Misurazione glicemia."` o
+`"Profilo lipidico per Lucio Fabri."` non hanno i due punti e non
+producono rumore.
+
+L'abbinamento è **rigorosamente per `event_id`, mai per titolo**: non è
+possibile finire a leggere l'evento di un altro cliente.
+
+**Nuovo nodo `Serve il dettaglio calendario?`** — la lettura del calendario
+costa circa **7 secondi**, misurati sull'esecuzione 71639. Farla a ogni
+messaggio avrebbe portato una risposta normale da ~9 a ~19 secondi. Un IF
+la fa scattare solo quando il cliente sta parlando dei suoi appuntamenti o
+di un ritiro. Il primo filtro conteneva `a che ora` ed è scattato anche su
+"A che ora aprite oggi?" (esecuzione 71642): stretto e riprovato.
+
+Il cancello riguarda **solo il dettaglio**, mai la correttezza: se non
+scatta, l'agenda esce comunque completa, senza il nome del prodotto.
+
+**Terza correzione, dallo stesso giro di log:** `findName` registrava
+"Mi ricorda gli appuntamenti" (senza punto interrogativo) come nome del
+cliente — `nome: "Ricorda Gli Appuntamenti"`, esecuzione 71475. Aggiunte
+le parole di scarto, e lo stesso filtro ora vale anche sul nome **già
+salvato**, così uno stato sporco di una conversazione precedente viene
+scartato alla rilettura invece di trascinarsi.
+
+### Verifica
+
+Prove reali sul codice pubblicato:
+
+| messaggio | esito |
+|---|---|
+| "Mi ricorda gli appuntamenti" | elenco completo, `Ritiro prodotto (Oral-B Pro 3)`, nome del cliente non più inquinato |
+| "A che ora aprite oggi?" | nodo calendario **non eseguito**, risposta sugli orari |
+| "Ritiro prodotto, quale prodotto devo ritirare" | **"Deve ritirare Oral-B Pro 3."** |
+
+Rieseguiti anche i test dei Round 15 e 19: tutti passati, nessuna
+regressione sull'estrazione da una proposta singola né sull'elenco che non
+deve contaminare lo stato.
+
+Pubblicato: `activeVersionId 85e55c20-5b15-40a4-9ea8-7f1bcba1860a`.
+
+### Nota di metodo
+
+Durante l'intervento ho scritto per errore un segnaposto nel campo del
+codice di `Stato prenotazione`. Il workflow era in bozza e non è mai
+andato in produzione in quello stato, ma è la ragione per cui la verifica
+riga per riga fra codice pubblicato e file nel repo va fatta **sempre**
+prima di pubblicare, non solo quando si sospetta un problema.

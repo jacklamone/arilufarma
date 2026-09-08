@@ -31,7 +31,7 @@ try {
   }
   const prev = data.booking[wa] || {};
 
-  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
   const cap = (s) => String(s || '').toLowerCase().replace(/(^|\s|')([a-z])/g, (m, a, b) => a + b.toUpperCase());
 
   const ALIAS = [
@@ -256,13 +256,16 @@ try {
   if (/conferma che va bene|va bene cosi/.test(lastBot) && yes) st.confirmed = true;
   if (/promemoria/.test(lastBot) && yes) { st.confirmed = true; st.reminder = 'si'; st.reminderAsked = true; }
   if (/promemoria/.test(lastBot) && no) { st.confirmed = true; st.reminder = 'no'; st.reminderAsked = true; }
-  if (!st.booked && /e confermato|confermata|ho prenotato/.test(lastBot)) st.booked = true;
+  // vedi nota in 'Consolida stato prenotazione': "va confermato in sede" non
+  // e' una conferma di prenotazione.
+  const bookedDaBot = /(ho prenotato|ho fissato|abbiamo fissato|prenotazione (e |ha |risulta )?confermat|appuntamento (e |ha |risulta )?confermat|ritiro (e |ha |risulta )?confermat|confermat[oa] per (luned|marted|mercoled|gioved|venerd|sabato|domenica|domani|oggi|il |l')|confermat[oa] ✅|e confermato ✅)/.test(lastBot) && !/(va confermat|vanno confermat|da confermar|deve essere confermat|confermat[oa] in sede|confermat[oa] in negozio|confermat[oa] al telefono|confermat[oa] direttamente)/.test(lastBot);
+  if (!st.booked && bookedDaBot) st.booked = true;
 
   const readyToBook = !!(st.servizio && st.giorno && st.ora && st.nome && (st.reminderAsked || st.confirmed));
   if (!st.booked && readyToBook && yes) st.confirmed = true;
 
   const asksConfirm = /(e|gia)\s+confermat|confermato\s*\?|gia prenot|appuntamento (e |gia )?conferm|ok e confermat/.test(lastUser);
-  const lastWasConfirm = /e confermato|confermata|ho prenotato/.test(lastBot);
+  const lastWasConfirm = bookedDaBot;
   if (!newIntent && lastWasConfirm) {
     st.booked = true;
     st.confirmed = true;
@@ -323,4 +326,3 @@ try {
 } catch (e) {
   return pack('', empty, false, '');
 }
-

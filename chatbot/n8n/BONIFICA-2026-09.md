@@ -1109,3 +1109,58 @@ conversazione passa a un argomento diverso, non restare appeso per giorni.
 Stato del numero di test azzerato con esecuzione reale (`mode: trigger`,
 esecuzione 70665, `cleared: [booking, lastBot, known, lastWamid]`),
 intervallo dello schedule riportato a 4 ore.
+
+## Round 15 (8 settembre) — "va confermato in sede" veniva letto come prenotazione confermata
+
+Il titolare ha segnalato il bot bloccato. Due cose distinte.
+
+**1. Workflow lasciato spento (errore mio).** Dopo le due modifiche della
+sera precedente (privacy dopo il benvenuto, accoglienza sugli orari
+occupati) ho eseguito `unpublish` → `update` → `update` ma **non** il
+`publish` finale. Il bot è rimasto fermo finché il titolare non lo ha
+riacceso a mano. Le modifiche erano corrette e sono ora pubblicate.
+
+**2. Il bug che spiega gran parte dei comportamenti strani.** Nel test
+della sera prima il bot ha chiesto nome e cognome ("Luciano fratelli"), li
+ha usati nella risposta immediata, e poi 13 minuti dopo — alla seconda
+prenotazione — ha risposto *"No, non li vedo qui in chat"*.
+
+Guardando lo stato al momento in cui il nome è stato scritto (esecuzione
+70697):
+
+```
+booked: true, confirmed: true, bookedDate: 2026-09-07
+servizio: "", giorno: "", ora: "", nome: ""     <-- tutto vuoto
+nota: "[PRENOTAZIONE GIÀ SALVATA: .]"           <-- vuota
+```
+
+Il sistema si credeva a prenotazione conclusa quando non c'era nessuna
+prenotazione. Causa: in `Consolida stato prenotazione` la condizione era
+
+```js
+if (/e confermato|confermata|ho prenotato|confermato/.test(t) && !newIntent)
+```
+
+e il ramo `|confermato` matcha **"il prezzo va confermato in sede o al
+telefono"** e **"il modello esatto va confermato in negozio"** — frasi che
+il systemMessage *impone* di dire per ogni prodotto a prezzo "da definire",
+cioè per l'intero listino. Da quel momento `booked = true`, e in
+`Stato prenotazione` il blocco di estrazione è protetto da
+
+```js
+if (!(st.booked && !newIntent)) { ...estrai servizio/giorno/ora/nome... }
+```
+
+quindi smette di raccogliere qualsiasi campo per tutto il resto della
+conversazione. Il nome non è mai entrato nello stato.
+
+Il bug si innescava in pratica ogni volta che si parlava di un prodotto,
+e spiega diversi episodi attribuiti in precedenza a "problemi di memoria".
+
+**Fix:** in entrambi i nodi la conferma è ora riconosciuta da un pattern
+specifico (`ho prenotato`, `ho fissato`, `prenotazione/appuntamento/ritiro
+confermat*`, `confermat* per <giorno>`, `confermat* ✅`) con esclusione
+esplicita dei falsi positivi (`va confermat`, `da confermar`, `confermat*
+in sede/in negozio/al telefono`). Collaudato su 8 frasi reali prese dai log
+— 4 che NON devono contare come conferma e 4 che devono — tutte corrette,
+verificate anche rieseguendo il test sul codice effettivamente pubblicato.

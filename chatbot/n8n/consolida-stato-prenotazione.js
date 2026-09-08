@@ -24,7 +24,13 @@ if (newIntent) {
   st.event_id = '';
   st.bookedDate = '';
 }
-if (/e confermato|confermata|ho prenotato|confermato/.test(t) && !newIntent) {
+// "va confermato in sede" / "il modello va confermato in negozio" NON sono
+// conferme di prenotazione: il prompt impone di dirle per ogni prodotto a
+// prezzo 'da definire', e la vecchia regex le scambiava per una prenotazione
+// confermata, bloccando la raccolta di servizio/giorno/ora/nome per il resto
+// della conversazione (osservato in produzione il 7 settembre).
+const confermaReale = /(ho prenotato|ho fissato|abbiamo fissato|prenotazione (e |ha |risulta )?confermat|appuntamento (e |ha |risulta )?confermat|ritiro (e |ha |risulta )?confermat|confermat[oa] per (luned|marted|mercoled|gioved|venerd|sabato|domenica|domani|oggi|il |l')|confermat[oa] ✅|e confermato ✅)/.test(t) && !/(va confermat|vanno confermat|da confermar|deve essere confermat|confermat[oa] in sede|confermat[oa] in negozio|confermat[oa] al telefono|confermat[oa] direttamente)/.test(t);
+if (confermaReale && !newIntent) {
   st.booked = true;
   st.confirmed = true;
 }

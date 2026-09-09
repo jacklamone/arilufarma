@@ -210,23 +210,35 @@ try {
   // messaggio riempie la finestra di memoria della conversazione (Round 13).
   const chiedeAgenda = /(mi ricord|cosa ho prenotat|che ho prenotat|quando ho|a che ora|a che nome|ho (un |qualche )?appuntament|miei appuntament|mia prenotazion|mie prenotazion|prenoarzion|promemoria|e confermat|gia prenotat|quando devo venire|quando vengo|ricordarmi)/.test(lastUser);
 
+  // Gli identificativi degli eventi si mettono nella nota SOLO quando il
+  // cliente sta chiedendo di annullare o spostare qualcosa. È l'unico modo che
+  // ha il modello di ottenere un event_id: Controlla_disponibilita non ne
+  // restituisce più (9 settembre), e questi vengono dalle righe del foglio già
+  // filtrate sul numero di chi scrive. Così per toccare l'appuntamento di un
+  // altro cliente il modello dovrebbe indovinarne l'identificativo.
+  const chiedeModifica = /(annull|cancell|disdi|spost|rimand|posticip|anticip|cambiare (giorno|ora|orario)|un altro giorno|un'altra ora)/.test(lastUser);
+
   let agendaNote = '';
   if (agendaLetta && agenda.length) {
     // Se il cliente NON sta chiedendo dell'agenda basta il prossimo
     // appuntamento: serve solo a non riprenotare la stessa cosa. Ripetere
     // l'elenco intero in ogni messaggio riempirebbe la memoria per niente.
-    const quanti = chiedeAgenda ? 5 : 1;
+    const quanti = (chiedeAgenda || chiedeModifica) ? 5 : 1;
     const voci = agenda.slice(0, quanti).map((r) => {
       const nm = nomeUtile(r.nome);
       const tipo = String(r.tipo || 'appuntamento');
       const dett = dettaglioDaCalendario(r.event_id, tipo);
-      return [dett ? tipo + ' (' + dett + ')' : tipo, fmtAppuntamento(r.inizio), nm ? 'a nome ' + nm : ''].filter(Boolean).join(' ');
+      const id = chiedeModifica && r.event_id ? 'EventId=' + String(r.event_id) : '';
+      return [dett ? tipo + ' (' + dett + ')' : tipo, fmtAppuntamento(r.inizio), nm ? 'a nome ' + nm : '', id].filter(Boolean).join(' ');
     });
     agendaNote = ' [AGENDA DI QUESTO CLIENTE, letta ORA dal gestionale (dato certo, riguarda solo lui): ' + voci.join(' | ') + '.';
+    if (chiedeModifica) {
+      agendaNote += ' Gli EventId qui sopra sono gli UNICI che puoi usare per annullare o spostare: non prenderli da nessun altro strumento e non scriverli MAI in un messaggio al cliente. Se quello che il cliente descrive non compare in questo elenco, non è suo: non toccarlo e invitalo a chiamare la parafarmacia.';
+    }
     agendaNote += chiedeAgenda
       ? ' Sta chiedendo proprio questo: rispondi SUBITO indicando servizio, giorno e ora di TUTTI quelli elencati. VIETATO rispondere «posso verificare», «se vuole controllo» o rimandare al messaggio dopo.]'
-      : (agenda.length > 1 ? ' (e altri ' + (agenda.length - 1) + ').' : '') + ' Non ricrearli in calendario e non citarli se non serve.]';
-  } else if (agendaLetta && chiedeAgenda) {
+      : (agenda.length > voci.length ? ' (e altri ' + (agenda.length - voci.length) + ').' : '') + ' Non ricrearli in calendario e non citarli se non serve.]';
+  } else if (agendaLetta && (chiedeAgenda || chiedeModifica)) {
     agendaNote = ' [AGENDA DI QUESTO CLIENTE, letta ORA dal gestionale: nessun appuntamento futuro a questo numero. Dillo con chiarezza e offri di prenotarne uno: non inventare appuntamenti e non dire che devi verificare.]';
   }
 

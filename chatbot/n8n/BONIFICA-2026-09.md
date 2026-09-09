@@ -2092,3 +2092,100 @@ Cancellato l'evento sbagliato in calendario
 settembre ore 15:00). **La riga corrispondente resta nel foglio
 Prenotazioni**: è dato di test, ma finché c'è comparirà nell'agenda letta
 dal bot per quel numero.
+
+---
+
+## Round 26 — 9 settembre: isolamento dei dati fra clienti
+
+### Cosa non andava
+
+Domanda del titolare: se un cliente chiede della prenotazione di un altro
+nome, il bot può fare confusione? Controllati tutti gli strumenti.
+
+**In lettura** l'agenda era già sicura per costruzione: `Leggi
+Prenotazioni cliente` interroga il foglio filtrando per `wa_id`, e il
+codice rifiltra con `String(r.wa_id) === wa`. Il dettaglio prodotto si
+abbina per `event_id`, mai per nome.
+
+**Ma `Controlla_disponibilita` restituiva al modello gli eventi interi di
+tutti i clienti** — titolo, descrizione, nome, servizio, orario e
+identificativo. Nella conversazione dell'8 settembre il modello si è
+visto arrivare «MOC — Angelo Fonte», «Profilo lipidico — Lucio Fabri»,
+«Noleggio tiralatte — Anna Falcetti». L'unica protezione era una frase
+nella descrizione dello strumento.
+
+**Peggio:** tre dei quattro strumenti che modificano prenotazioni
+identificano l'appuntamento con un `EventId` scelto dal modello, senza
+alcuna verifica di appartenenza.
+
+| Strumento | Identifica con | Verifica il numero? |
+|---|---|---|
+| `Aggiorna_prenotazione` | `wa_id` dal trigger + orario | **sì** |
+| `Cancella_appuntamento` | solo `EventId` dal modello | no |
+| `Sposta_appuntamento` | solo `EventId` dal modello | no |
+| `Aggiorna_prenotazione_per_id` | solo `event_id` dal modello | no |
+
+E la descrizione di `Cancella_appuntamento` diceva: *«Serve l'ID evento,
+che ottieni prima con Controlla_disponibilita»* — cioè dall'elenco di
+tutti. Bastava la confusione, non la malafede: «annullate la MOC di
+mercoledì alle 16:30» detto da chi quella MOC non ce l'ha, e l'unica MOC
+in calendario è di un altro.
+
+### L'intervento
+
+1. **`Controlla_disponibilita` passa a `resource: calendar`, `operation:
+   availability`, `outputFormat: bookedSlots`**: restituisce solo gli
+   intervalli occupati (inizio e fine). Niente titoli, niente nomi,
+   niente servizi, **niente identificativi**. Per proporre uno slot
+   libero serve esattamente questo.
+2. **Gli `EventId` veri li porta la nota dell'agenda**, che è già
+   filtrata per `wa_id`, e **solo quando il cliente chiede di annullare o
+   spostare** (`chiedeModifica`): negli altri messaggi la nota resta
+   corta come prima. Così gli unici identificativi che il modello vede in
+   tutta la conversazione sono quelli del numero che sta scrivendo.
+3. Descrizioni di `Cancella_appuntamento`, `Sposta_appuntamento` e
+   `Aggiorna_prenotazione_per_id` riscritte: l'EventId viene
+   ESCLUSIVAMENTE dalla nota agenda, mai da `Controlla_disponibilita`,
+   mai inventato; se l'appuntamento non è in quella nota non è del
+   cliente e non va toccato. Sei righe del prompt aggiornate di
+   conseguenza (42, 44, 64, 71, 105, 124).
+
+Da regola scritta a garanzia per costruzione: per toccare l'appuntamento
+di un altro cliente il modello dovrebbe indovinare una stringa di 26
+caratteri che non ha mai visto.
+
+### Effetto collaterale accettato
+
+Un appuntamento preso di persona o al telefono, che non risulta nel
+foglio sotto quel numero, il bot **non lo può più annullare né spostare**:
+risponde che non risulta a quel numero e invita a chiamare. È il
+comportamento corretto — senza la riga nel gestionale non c'è modo di
+verificare che sia davvero suo — ma va detto alla parafarmacia.
+
+### Verifica
+
+Scenari aggiunti al banco di prova, codice vecchio contro nuovo:
+
+| scenario | esito |
+|---|---|
+| «Vorrei annullare la glicemia di mercoledì» | nota con `EventId=hs83e...` e `EventId=2ofg8...`, entrambi del numero che scrive |
+| «Buongiorno, che orari fate?» | nessun EventId nella nota |
+| «Annullate il mio appuntamento di giovedì», agenda vuota | «nessun appuntamento futuro a questo numero», nessun id |
+
+Pubblicato: versione `5dc755e3`. Confronto byte per byte prima di
+pubblicare — `jsCode` 12.926 caratteri, `systemMessage` 23.220
+caratteri: identici al repository.
+
+### Rimasto aperto
+
+- **Cintura oltre alle bretelle**: trasformare `Cancella_appuntamento` in
+  un sotto-workflow che prima di cancellare rilegge il foglio e verifica
+  che quell'`event_id` appartenga a quel `wa_id`. Rifiuterebbe anche
+  l'identificativo indovinato. Mezza giornata, Fase 1.
+- **Storico**: l'agenda mostra solo gli appuntamenti futuri. «Che
+  prenotazione ho fatto a settembre», se è passata, non trova risposta.
+  Estenderlo è una riga, ma significa che il bot legge tutta la
+  cronologia del cliente: va deciso e messo nell'informativa.
+- **Il prompt è cresciuto di 638 caratteri** (22.582 → 23.220). Per
+  cambiare sei righe si riscrivono ventitremila caratteri: è
+  esattamente l'argomento a favore dell'intervento 2 della roadmap.

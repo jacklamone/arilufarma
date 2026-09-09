@@ -1999,3 +1999,96 @@ farmacia: ci riporta alle dieci copie, cioè alla cosa da evitare.
 Se questi sei passi restano manuali sono mezza giornata a cliente: dieci
 clienti, cinque giornate. Se diventano una procedura guidata sono dieci
 minuti. È lì che si decide se il prodotto scala.
+
+---
+
+## Round 25 — 9 settembre: smontata la deduzione dei dati dal testo
+
+### Il guasto che ha deciso la priorità
+
+Conversazione reale dell'8 settembre, 22:17–22:21 (esecuzioni 72477 →
+72514). Il cliente prenota una spirometria:
+
+| ora | chi | cosa |
+|---|---|---|
+| 22:20:10 | cliente | «Martedì prossimo alle 10» |
+| 22:20:11 | `Stato prenotazione` | `ora: "10:00"` — corretto |
+| 22:20:16 | bot | «Martedì **15 settembre** alle 10:00 va bene per la spirometria» |
+| 22:20:30 | `Stato prenotazione` | `ora: "15:00"` — **sbagliato** |
+| 22:21:00 | bot | evento creato `2026-09-15T15:00`, riga salvata nel foglio |
+
+Il nodo rileggeva l'ultimo messaggio del bot per non perdere i dati.
+`findOra` scandiva i numeri da sinistra, incontrava il **15** di «15
+settembre» prima delle 10:00 e lo restituiva come orario. Riprodotto in
+locale, deterministico:
+
+```
+"Martedì prossimo alle 10"                      -> 10:00
+"Martedì 15 settembre alle 10:00 va bene ..."   -> 15:00   <- il guasto
+"Le confermo giovedì 11 settembre alle 9:30"    -> 11:00
+"Mercoledì 17 dicembre alle 16:00"              -> 17:00
+```
+
+Non un caso isolato: con il giorno del mese fra 7 e 20 — quattordici
+giorni su trenta — la prenotazione veniva salvata a quell'ora.
+
+Nello stesso messaggio il modello ha aggiunto di suo «*Se desidera, può
+anche passare direttamente in sede 10 minuti prima*». Nel prompt attivo
+(22.582 caratteri) «10 minuti», «minuti prima», «anticipo» e «passare
+direttamente» compaiono **zero** volte: frase inventata, plausibile e
+falsa. Segnalata, non ancora affrontata.
+
+### L'intervento
+
+`Stato prenotazione`: **516 righe → 236**. Eliminate undici funzioni —
+`findServizio`, `findGiorno`, `findOra`, `findName`, `sembraElenco`,
+`sembraProposta`, `statoVuoto`, `clearBooking`, `dateForGiorno`,
+`ymdRome`, `weekdayRome` — e con loro le sette toppe accumulate fra il 3
+e l'8 settembre (il prezzo scambiato per orario, «pelle» che diventava un
+servizio, l'elenco del bot riletto come richiesta, «Cerchi inci preciso»
+registrato come nome).
+
+Il modello ha in memoria gli ultimi 12 messaggi: sa già cosa gli è stato
+detto. Il codice fa solo ciò che il modello non può fare — leggere il
+gestionale.
+
+Restano: agenda dal foglio Prenotazioni per numero WhatsApp, dettaglio
+prodotto dalla descrizione dell'evento abbinato per `event_id`,
+registrazione del sì/no sul promemoria. Quest'ultima ora riconosce la
+domanda dal punto interrogativo vicino alla parola, così un «ok» dopo
+«Promemoria WhatsApp attivo ✅» non viene più letto come risposta; e la
+nota sparisce quando `booked` è acceso, invece di ripetersi a ogni
+messaggio.
+
+Rimossi anche `fastConfirm` e `fastText`: una trentina di righe che
+costruivano una risposta rapida che **nessun nodo leggeva**.
+
+Le due regole che la nota portava con sé sono passate nella descrizione
+di `Prenota_appuntamento` (verifica la disponibilità prima; non creare un
+secondo evento uguale; non fissare senza aver chiesto il promemoria). Il
+divieto di citare i nomi degli altri clienti era già, per esteso, nella
+descrizione di `Controlla_disponibilita`: non toccata.
+
+### Verifica
+
+Codice vecchio e nuovo rieseguiti sulle stesse conversazioni reali, con
+il nodo `Consolida stato prenotazione` nel giro per riprodurre il
+comportamento vero:
+
+| scenario | prima | dopo |
+|---|---|---|
+| prenotazione dell'8 settembre | `ora: 15:00` passata all'agente come dato certo | nessuna nota; l'orario lo legge il modello |
+| conversazione sulle creme | servizio «Analisi capelli e pelle», ora «14:00» dal prezzo | 4 messaggi su 4, nessuna nota |
+| «mi ricorda cosa ho prenotato?» | agenda dal gestionale | identico |
+| prenotazione semplice | flusso completo | flusso completo, nota promemoria che si spegne dopo la conferma |
+| «ok» dopo la conferma | letto come sì al promemoria | ignorato |
+
+Pubblicato: versione `de0a41b2`, confronto byte per byte fra codice
+pubblicato e `stato-prenotazione.js` prima di pubblicare — 11.816
+caratteri, 236 righe, identici.
+
+Cancellato l'evento sbagliato in calendario
+(`f6q9g1s33dvoupmch5f2qmtr5c`, Spirometria — Sandro Giacobbe, 15
+settembre ore 15:00). **La riga corrispondente resta nel foglio
+Prenotazioni**: è dato di test, ma finché c'è comparirà nell'agenda letta
+dal bot per quel numero.

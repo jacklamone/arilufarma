@@ -2211,3 +2211,43 @@ Resta in tu la frase del promemoria, «Vuoi ricevere un promemoria su
 WhatsApp il giorno prima? (Sì/No)»: è imposta come formula esatta nel
 prompt, e per cambiare una parola servirebbe ritrasmettere 23.220
 caratteri. Accorpata all'intervento 2 della roadmap.
+
+### Registro tu/lei: la regola non era mai stata scritta
+
+Il titolare ricorda che l'idea iniziale era: il bot dà del lei, ma se il
+cliente gli dà del tu passa al tu. Cercata nel prompt: **zero
+occorrenze** di «tu», «lei», «registro», «formale» in 23.220 caratteri.
+La regola non è mai esistita nelle istruzioni — il bot usava il lei solo
+perché il prompt dice «cordiale, professionale» e il modello sceglie da
+sé il formale in contesto parafarmacia.
+
+E la correzione del tu→lei nell'informativa, fatta poche ore prima,
+spostava il problema invece di risolverlo: quella frase **non è un
+messaggio a parte**, il nodo la incolla in coda alla risposta
+dell'agente nello stesso messaggio WhatsApp. Qualunque registro fisso vi
+si metta, prima o poi stona con quello che l'agente ha scritto sopra.
+
+Tre modifiche in un unico passaggio:
+
+1. **Testo dell'informativa reso neutro** in entrambi i nodi: «Il
+   trattamento dei dati è descritto nella nostra informativa sulla
+   privacy, consultabile qui sotto». Nessun tuoi/suoi, nessun puoi/può:
+   regge sotto qualsiasi risposta.
+2. **Regola del registro** aggiunta in TONO: lei di default, compreso il
+   primo messaggio; se il cliente dà del tu si passa al tu dal messaggio
+   successivo e lo si tiene per tutta la conversazione; mai tornare
+   indietro, mai mescolare i due nello stesso messaggio; nel dubbio lei.
+   Il pulsante privacy è dichiarato fuori dalla regola.
+3. **Le due formule imposte come esatte hanno ora due varianti**: il
+   promemoria («Vuole ricevere…» / «Vuoi ricevere…») e la risposta agli
+   audio («mi scriva pure» / «scrivimi pure»). Nessuna modifica al
+   codice: il riconoscimento della risposta sul promemoria cerca
+   `promemoria` seguito da punto interrogativo e funziona con entrambe.
+
+Al primo messaggio il bot non ha ancora elementi per capire il registro
+— spesso ha davanti solo «Buongiorno» — quindi parte dal lei per scelta
+esplicita.
+
+Prompt: 23.220 → 24.054 caratteri. Modifica applicata alla bozza senza
+spubblicare, verificata byte per byte, pubblicata come `64b9cb7d`.
+Nessuna interruzione del servizio.

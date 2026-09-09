@@ -2189,3 +2189,25 @@ caratteri: identici al repository.
 - **Il prompt è cresciuto di 638 caratteri** (22.582 → 23.220). Per
   cambiare sei righe si riscrivono ventitremila caratteri: è
   esattamente l'argomento a favore dell'intervento 2 della roadmap.
+
+### Coda del 9 settembre: il bot dava del tu e del lei nello stesso messaggio
+
+Visibile nello screenshot delle 08:20: «Per giovedì mattina, a che ora
+**preferisce**?» (lei) seguito da «Trattiamo i **tuoi** dati… **Puoi**
+leggerla qui sotto» (tu). Corretto il testo dell'informativa in entrambi
+i nodi che la inviano — `Invia_informativa_privacy (auto)` e
+`Invia_informativa_privacy` — in «Trattiamo i suoi dati… Può leggerla
+qui sotto».
+
+Modifica fatta sulla bozza **senza spubblicare**: il workflow attivo ha
+continuato a servire la versione precedente fino al `publish`, quindi
+zero interruzione. Verificato prima di pubblicare che nel corpo del nodo
+automatico `\n\n` sia rimasta la sequenza letterale di due caratteri e
+non un a capo vero — un a capo dentro una stringa fra apici singoli in
+un'espressione n8n dà *invalid syntax*, ed è il guasto di Round 21.
+Versione pubblicata: `6929fb6a`.
+
+Resta in tu la frase del promemoria, «Vuoi ricevere un promemoria su
+WhatsApp il giorno prima? (Sì/No)»: è imposta come formula esatta nel
+prompt, e per cambiare una parola servirebbe ritrasmettere 23.220
+caratteri. Accorpata all'intervento 2 della roadmap.

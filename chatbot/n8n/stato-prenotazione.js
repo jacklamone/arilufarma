@@ -199,10 +199,17 @@ try {
   // confermato, il nodo 'Consolida stato prenotazione' mette booked a true:
   // da lì in poi la nota non ha più niente da dire e ripeterla a ogni
   // messaggio consumerebbe la finestra di memoria per niente.
+  //
+  // La risposta sul promemoria è l'ULTIMO passo prima di salvare: il prompt
+  // impone di chiederlo quando tutti gli altri campi sono già noti. Appena
+  // arriva, quindi, non manca più niente e va prenotato. Senza dirlo, l'agente
+  // aggiunge un giro di conferma di troppo — «Se vuole, posso procedere con la
+  // prenotazione» — e il cliente deve dire sì due volte (9 settembre,
+  // esecuzione 73368).
   const remNote = st.booked
     ? ''
     : st.reminder
-      ? (' [PROMEMORIA: il cliente ha GIÀ risposto ' + st.reminder + '. Non richiederlo: salva con Promemoria=' + st.reminder + '.]')
+      ? (' [PROMEMORIA: il cliente ha GIÀ risposto ' + st.reminder + '. Non richiederlo. Non manca più nulla: prenota ORA con Prenota_appuntamento e salva subito con Salva_prenotazione (Promemoria=' + st.reminder + '), poi conferma al cliente. VIETATO chiedere un\'altra conferma o dire «posso procedere».]')
       : (st.reminderAsked ? ' [PROMEMORIA: già chiesto, attendi la risposta del cliente. Non richiederlo.]' : '');
 
   // La nota lunga con l'istruzione esplicita parte SOLO quando il cliente sta

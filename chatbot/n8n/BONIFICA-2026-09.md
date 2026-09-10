@@ -2251,3 +2251,58 @@ esplicita.
 Prompt: 23.220 → 24.054 caratteri. Modifica applicata alla bozza senza
 spubblicare, verificata byte per byte, pubblicata come `64b9cb7d`.
 Nessuna interruzione del servizio.
+
+---
+
+## Round 27 — 10 settembre: verifica sul campo e un giro di conferma di troppo
+
+Conversazione reale del 9 settembre, 10:03–10:10 Rome (esecuzioni 73344 →
+73372), la prima interamente sulla versione senza deduzione.
+
+### Cosa ha funzionato
+
+- **Prenotazione completa e corretta**: sabato 12 settembre alle 10:00,
+  misurazione glicemia, a nome Massimo D'Amici, promemoria sì. Evento
+  `f2rcv43gt3et59aftrqgjucjos`, riga salvata nel foglio. Lo stato è
+  rimasto vuoto per tutta la conversazione — nessun campo dedotto — e il
+  modello ha condotto il dialogo leggendo solo la cronologia.
+- **Registro**: il bot ha usato «**Vuole** ricevere un promemoria…», la
+  variante al lei introdotta poche ore prima. La regola scritta funziona.
+- **`Controlla_disponibilita`**: chiamato davvero, ha restituito quattro
+  intervalli `{start, end}` e nient'altro. Nessun nome, nessun servizio,
+  nessun identificativo altrui è arrivato al modello.
+- **Orari del foglio rispettati**: alla richiesta «sabato alle 16» ha
+  risposto che il sabato si chiude alle 13 e ha proposto la mattina.
+
+Nota di onestà: questa conversazione **non ha esercitato** il guasto
+dell'8 settembre. Il bot non ha mai scritto un giorno del mese prima
+dell'ora («sabato alle 10:00», mai «12 settembre alle 10:00»), quindi il
+vecchio `findOra` non avrebbe sbagliato nemmeno lui. La prova che il
+guasto è chiuso resta quella del banco di prova, non questa.
+
+### Due attriti
+
+1. **Cognome chiesto due volte.** Il cliente scrive «Massimo d'amici», il
+   bot risponde «Mi conferma anche il cognome completo, per favore?». Non
+   ha riconosciuto «d'amici» come cognome — minuscolo, con apostrofo. È
+   il modello, non il codice: lo stato non tocca più i nomi. Da sistemare
+   nel prompt, insieme all'accorciamento.
+
+2. **Un giro di conferma di troppo** (esecuzione 73368). Il cliente
+   risponde «Sì» al promemoria, lo stato registra correttamente
+   `reminder: si` e inietta la nota, ma l'agente replica «Se vuole, posso
+   procedere con la prenotazione» invece di prenotare. Il cliente deve
+   dire sì due volte.
+
+   È una **regressione dell'intervento del 9 settembre**: la vecchia nota
+   `[PRENOTAZIONE DA CONFERMARE: … Controlla_disponibilita prima …]`
+   spingeva ad agire, e togliendola è rimasto solo un dato senza un
+   ordine. La risposta sul promemoria è però l'ultimo passo prima di
+   salvare — il prompt impone di chiederlo quando tutto il resto è già
+   noto — quindi appena arriva non manca più niente. La nota ora lo dice:
+
+   > `[PROMEMORIA: il cliente ha GIÀ risposto si. Non richiederlo. Non manca più nulla: prenota ORA con Prenota_appuntamento e salva subito con Salva_prenotazione (Promemoria=si), poi conferma al cliente. VIETATO chiedere un'altra conferma o dire «posso procedere».]`
+
+Banco di prova portato a nove scenari, compresa questa conversazione.
+Pubblicato come `b76d3a0c`, bozza modificata a bot acceso e confronto
+byte per byte prima di pubblicare (13.514 caratteri).

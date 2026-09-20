@@ -1,0 +1,9 @@
+# Il catalogo della parafarmacia NON va nel repository.
+# Contiene prezzi di vendita, costi d'acquisto e giacenze: sono dati
+# commerciali del cliente, e su main Netlify pubblicherebbe la cartella
+# chatbot/ come file statici, rendendoli scaricabili da chiunque.
+# Nel repository ci va solo lo script che li converte.
+*.TXT
+*.txt.gz
+chatbot/n8n/prodotti*.csv
+chatbot/n8n/inventario*

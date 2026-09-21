@@ -162,29 +162,47 @@ def converti(sorgente, destinazione):
         print('      %-32s %s' % (n, d))
 
     # --- scrittura -----------------------------------------------------------
-    intestazione_uscita = ['minsan', 'nome', 'nome_gestionale', 'ditta',
-                           'categoria', 'prezzo', 'giacenza', 'descrizione',
-                           'cod_merc', 'iva', 'aggiornato']
+    # Esce SOLO cio' che serve al bot per rispondere a un cliente.
+    #
+    # Restano fuori, di proposito:
+    #   COSTO e COSTO N.  - quanto la parafarmacia paga il prodotto. Al
+    #                       cliente non serve e non e' roba che deve girare.
+    #   P.LIST.           - listino del fornitore, diverso dal prezzo pagato.
+    #   totali finali     - li leggiamo solo per verificare la lettura del
+    #                       file, non vengono mai scritti.
+    #   ragione sociale, P.IVA, indirizzo - WinFarm li ripete su ogni riga,
+    #                       sono dati dell'azienda e non c'entrano col listino.
+    #   IVA, SUD.MERC., ATC, Degrassi, gr. terapeutico - codici interni al
+    #                       gestionale, inutili per rispondere a una domanda.
+    #   nome gestionale grezzo - ridondante: la riga si ritrova col Minsan.
+    #
+    # GIACENZA -> DISPONIBILE. Non scriviamo quanti pezzi ci sono, ma solo se
+    # il prodotto c'e' o no. Due motivi. Il primo: una colonna con le quantita'
+    # esatte di 3.787 prodotti, accanto ai prezzi, e' la fotografia del
+    # magazzino della parafarmacia, e per rispondere a un cliente non serve.
+    # Il secondo: la quantita' viene da un'esportazione della notte prima,
+    # quindi "ne restano 2" e' una precisione che non possiamo garantire,
+    # mentre "disponibile" e' onesto.
+    intestazione_uscita = ['minsan', 'nome', 'ditta', 'prezzo',
+                           'disponibile', 'descrizione', 'aggiornato']
     data_export = valore(dati[0], intestazione, 'DATA') if dati else ''
     with open(destinazione, 'w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
         w.writerow(intestazione_uscita)
         for r in tenuti:
             grezzo = valore(r, intestazione, 'DESCRIZIONE')
+            in_casa = numero(valore(r, intestazione, 'G.TOT')) > 0
             w.writerow([
                 valore(r, intestazione, 'COD.MIN.'),
                 nome_leggibile(grezzo),
-                grezzo,
                 valore(r, intestazione, 'DESCRIZIONE DITTA'),
-                '',                       # categoria: la riempie il passaggio IA
                 prezzo_italiano(numero(valore(r, intestazione, 'P.VEND.(€)'))),
-                str(int(numero(valore(r, intestazione, 'G.TOT')))),
+                'si' if in_casa else 'no',
                 '',                       # descrizione: la riempie il passaggio IA
-                valore(r, intestazione, 'SUD.MERC.'),
-                valore(r, intestazione, 'IVA'),
                 data_export,
             ])
     print('\nScritto %s : %d righe + intestazione' % (destinazione, len(tenuti)))
+    print('  colonne: %s' % ', '.join(intestazione_uscita))
     return 0
 
 

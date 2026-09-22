@@ -6,7 +6,26 @@ const wanted = foglioRaw ? foglioRaw.split(/[,;|/]+/).map(s => s.trim()).filter(
 const stop = new Set(['per','una','uno','che','con','del','della','dei','delle','il','lo','la','gli','le','un','di','da','in','su','al','ai','alla','alle','qualcosa','qualche','questo','questa','anche','come','cosa','sono','avete','fate','fare','vorrei','voglio','serve','servono','dopo','lungo','raggio','consigliata','consigliato']);
 function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
 const nq = norm(q);
-const tokens = nq.split(/[^a-z0-9]+/).filter(t => t.length >= 3 && !stop.has(t));
+// Oltre ai pezzi lunghi della domanda si tiene anche la FUSIONE di un pezzo
+// corto col precedente. Senza, "oral-b" si spezzava in "oral" + "b", la "b"
+// spariva perche' sotto i 3 caratteri, e "oral" agganciava tutto cio' che e'
+// "orale": a "spazzolino elettrico oral-b" il listino rispondeva Enterosgel
+// sospensione ORALE e Dulcosoft soluzione ORALE, mentre i veri Oral-B, che nel
+// gestionale sono scritti "ORALB" tutto attaccato, non uscivano nemmeno.
+// Con la fusione esce anche il token "oralb", che li trova.
+// Stesso effetto su "spf 50" -> "spf50", che e' come lo scrivono le aziende.
+// (Verificato il 20 settembre sul catalogo reale di 3.787 prodotti: le altre
+// nove domande di prova danno risultati identici a prima.)
+const grezzi = nq.split(/[^a-z0-9]+/).filter(Boolean);
+const tokens = [];
+for (let i = 0; i < grezzi.length; i++) {
+  const t = grezzi[i];
+  if (t.length >= 3 && !stop.has(t) && !tokens.includes(t)) tokens.push(t);
+  if (i > 0 && t.length <= 2 && grezzi[i - 1].length >= 3) {
+    const fuso = grezzi[i - 1] + t;
+    if (!tokens.includes(fuso)) tokens.push(fuso);
+  }
+}
 // Stem leggero per l'italiano: toglie la vocale finale ai token/parole di
 // almeno 5 lettere prima del confronto, cosi' "spazzolini" (query, plurale)
 // trova "spazzolino" (scheda prodotto, singolare) e viceversa.

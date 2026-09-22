@@ -2306,3 +2306,113 @@ guasto è chiuso resta quella del banco di prova, non questa.
 Banco di prova portato a nove scenari, compresa questa conversazione.
 Pubblicato come `b76d3a0c`, bozza modificata a bot acceso e confronto
 byte per byte prima di pubblicare (13.514 caratteri).
+
+---
+
+## Round 28 — 20-22 settembre: il catalogo vero di WinFarm
+
+### Il file
+
+Il Dott. Conti ha esportato l'inventario da WinFarm: `inventario_010926`,
+1° settembre 2026 ore 09:03:31. TAB, ogni campo fra virgolette,
+Windows-1252, decimali con la virgola, 36 colonne, 4.280 prodotti. I
+prezzi compaiono due volte, in lire e in euro: retaggio di vent'anni fa.
+
+**COD.MIN. su tutte le righe, 9 cifre, zero duplicati** — la chiave su cui
+agganciare gli aggiornamenti futuri. Giacenza presente. Prezzo di vendita
+su 4.273 righe su 4.280.
+
+Nessun dato di clienti: e' un catalogo di prodotti.
+
+### Il convertitore
+
+`chatbot/n8n/winfarm-to-prodotti.py`. Ricalcola il valore di magazzino dai
+singoli prodotti e si rifiuta di scrivere se non coincide con i totali che
+WinFarm mette in fondo al file. Sull'esportazione del 1° settembre
+coincide al centesimo: **159.908,25 €**.
+
+**Filtro: solo le righe con CLASSE vuota, 3.787 prodotti su 4.280.**
+Restano fuori 378 medicinali di fascia C, 3 di fascia A, 53 omeopatici e
+59 veterinari. Il titolare riteneva che nell'inventario non ci fossero
+farmaci etici: non ci sono fascia A rimborsabili (a parte tre sacche di
+fisiologica), ma i 74 articoli del gruppo merceologico `E` comprendono
+Rinoclenil, Anauran, Meclon, Trofodermin — che la ricetta la richiedono —
+accanto a Tachipirina e Vicks Gola che si vendono liberamente. **Il file
+non distingue il regime di fornitura**, quindi finche' WinFarm non ci da'
+quel campo i medicinali restano tutti fuori. Chiesto nella richiesta
+all'assistenza.
+
+Escluso anche EllaOne e Norlevo: contraccezione d'emergenza, si vende
+senza ricetta a una maggiorenne ma non e' materia da chatbot.
+
+### Cosa esce, e cosa no
+
+Sette colonne: `minsan, nome, ditta, prezzo, disponibile, descrizione,
+aggiornato`. Su richiesta del titolare il file e' stato ridotto
+all'essenziale.
+
+Restano fuori di proposito: costi d'acquisto, listino fornitore, totali di
+inventario (letti solo per la verifica, mai scritti), ragione sociale,
+P.IVA e indirizzo che WinFarm ripete su ogni riga, e i codici interni
+(IVA, SUD.MERC., ATC, Degrassi).
+
+**La giacenza esce come si/no, non come quantita'.** Una colonna con le
+quantita' esatte di 3.787 prodotti accanto ai prezzi e' la fotografia del
+magazzino, e per rispondere a un cliente non serve; in piu' il numero
+viene dall'esportazione della notte prima, quindi «ne restano 2» e' una
+precisione che non possiamo garantire. Risultato: 2.961 disponibili, 826
+trattati ma esauriti.
+
+Verificato sul CSV: zero occorrenze di P.IVA, indirizzo, ragione sociale,
+costi e totali.
+
+**Il catalogo non entra nel repository.** Aggiunto `.gitignore`: sono
+prezzi e disponibilita' del cliente, e su `main` Netlify pubblicherebbe
+`chatbot/` come file statici.
+
+### La ricerca del listino, corretta sul catalogo reale
+
+Con 4.280 prodotti veri, dodici domande di prova: dieci buone, una
+disastrosa. «spazzolino elettrico oral-b» restituiva **Enterosgel
+sospensione ORALE, Marial oral stick, Dulcosoft soluzione ORALE**: la
+domanda si spezzava in `oral` + `b`, la `b` spariva perche' sotto i tre
+caratteri, e `oral` agganciava tutto cio' che e' «orale». Intanto i veri
+Oral-B, che nel gestionale sono scritti `ORALB` attaccato, non uscivano.
+
+Aggiunta in `Filtra corrispondenze` la **fusione di un pezzo corto col
+precedente**: `oral`+`b` produce anche il token `oralb`. Effetto
+collaterale gradito su «solare bambini spf 50», dove `spf`+`50` diventa
+`spf50`, come lo scrivono le aziende.
+
+| domanda | prima | dopo |
+|---|---|---|
+| spazzolino elettrico oral-b | Enterosgel, Marial oral stick | ORALB Power Oral Center, testine |
+| solare bambini spf 50 | irrigatore nasale bambine, Vicks tosse | Vinosun SPF50, Heliocare 360 SPF50+ |
+
+Le altre nove domande danno risultati identici: nessuna regressione.
+Verificato eseguendo la bozza su n8n prima di pubblicare (esecuzione
+87828): i due ORALB escono primi. Pubblicato come `6f2f5107`.
+
+### Servizi e galenici: non sono in WinFarm, e va bene cosi'
+
+Cercati nell'inventario: MOC, spirometria, profilo lipidico, emoglobina
+glicata, ferritina, pressione, analisi capelli, foro lobi, consulenza —
+**nessuna riga**. Ovvio: un servizio non ha giacenza, e quello e' un
+inventario di magazzino.
+
+La struttura regge gia': `Consulta_listino` legge quattro fogli. WinFarm
+aggiorna **solo Prodotti**; Galenici, Servizi e Offerte restano scritti a
+mano dal farmacista, ed e' giusto — nessun gestionale glieli dara' mai.
+
+**Trappola dei nomi che si sovrappongono.** Alcuni nomi esistono sia come
+servizio sia come prodotto:
+
+| il cliente chiede | WinFarm ha | ma il servizio e' |
+|---|---|---|
+| Vitamina D | OTI D3 gocce, IBSA 2000UI | l'esame del sangue |
+| Tiralatte | MAM manuale, MAM elettrico | il noleggio |
+
+Lo strumento restituisce anche il foglio di provenienza, quindi il
+modello puo' accorgersene, ma serve una riga nel prompt: se il nome
+combacia sia con un servizio sia con un prodotto, chiedere quale dei due
+si intende. **Da fare insieme all'accorciamento del prompt.**

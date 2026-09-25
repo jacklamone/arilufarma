@@ -13,6 +13,13 @@ dal 2011). Cliente dell'agenzia Intellecta Solutions. Demo pubblicata su
   (stili e script inline), più `privacy.html` e `cookie.html`.
 - Se l'account Netlify esaurisce i crediti i deploy vengono "Skipped":
   si sbloccano da soli al rinnovo mensile.
+- **Migrazione decisa (set 2026)**: il dominio parafarmaciasassari.it
+  passa da iWebLab ad Aruba con **trasferimento dominio + Hosting Linux**
+  (non WordPress: il sito è statico). Al trasferimento il DNS passa ad
+  Aruba e il vecchio sito si spegne: quel momento coincide col lancio.
+  Da caricare solo i file del sito (niente `chatbot/` né `CLAUDE.md`).
+  Al lancio aggiornare anche `og:image`/`twitter:image` in `index.html`
+  (oggi puntano a ariludemo.netlify.app).
 
 ## Struttura e caratteristiche
 

@@ -830,6 +830,11 @@ footer::before{
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;
 }
 .ft-bottom p{font-size:.68rem;font-weight:200;color:rgba(248,244,236,.18);letter-spacing:.05em;}
+.ft-copy{display:flex;align-items:center;flex-wrap:wrap;gap:.6rem 1.4rem;}
+.ft-credit{display:inline-flex;align-items:center;gap:.45rem;font-size:.72rem;font-weight:300;color:rgba(248,244,236,.45);letter-spacing:.03em;text-decoration:none;transition:color .2s;}
+.ft-credit img{width:20px;height:20px;border-radius:50%;flex-shrink:0;}
+.ft-credit strong{font-weight:500;color:rgba(248,244,236,.7);transition:color .2s;}
+.ft-credit:hover,.ft-credit:hover strong{color:var(--gold);}
 .ft-legal{display:flex;gap:1.5rem;padding-right:140px;position:relative;z-index:60;}
 .ft-legal a{font-size:.85rem;font-weight:300;color:rgba(248,244,236,.45);cursor:pointer;transition:color .2s;text-decoration:none;}
 .ft-legal a:hover{color:rgba(201,164,92,.8);}
@@ -890,6 +895,9 @@ footer::before{
   .prod-grid{grid-template-columns:repeat(2,1fr);}
   .ft-inner{grid-template-columns:1fr;gap:2.5rem;}
   .ft-bottom{flex-direction:column;text-align:center;}
+  .ft-copy{flex-direction:column;}
+  .ft-legal{padding-right:0;justify-content:center;}
+  footer{padding-bottom:11.5rem;}
 }
 @media(max-width:480px){
   .hero-h1{font-size:clamp(3.2rem,13vw,5rem);}
@@ -1503,7 +1511,14 @@ html{scrollbar-width:none;-ms-overflow-style:none;}html::-webkit-scrollbar,body:
     </div>
   </div>
   <div class="ft-bottom">
-    <p>© 2026 ArilùFarma · Tutti i diritti riservati</p>
+    <div class="ft-copy">
+      <p>© 2026 ArilùFarma · Tutti i diritti riservati</p>
+      <a class="ft-credit" href="https://intellectasolutions.it/" target="_blank" rel="noopener" aria-label="Sito realizzato da Intellecta Solutions">
+        <span>© 2026</span>
+        <img src="assets/img/intellecta-logo.png" alt="" width="20" height="20" loading="lazy">
+        <strong>Intellecta Solutions</strong>
+      </a>
+    </div>
     <div class="ft-legal">
       <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>
       <a href="cookie.html" target="_blank" rel="noopener">Cookie Policy</a>

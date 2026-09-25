@@ -10,9 +10,21 @@ dal 2011). Cliente dell'agenzia Intellecta Solutions. Demo pubblicata su
   (sito statico, nessun build command, publish directory `/`).
 - **Lingua**: solo italiano.
 - **Niente framework**: HTML/CSS/JS statici in un unico `index.html`
-  (stili e script inline), più `privacy.html` e `cookie.html`.
+  (stili e script inline), più `privacy.html`, `cookie.html` e
+  `note-legali.html`.
 - Se l'account Netlify esaurisce i crediti i deploy vengono "Skipped":
-  si sbloccano da soli al rinnovo mensile.
+  si sbloccano da soli al rinnovo mensile (poi serve un nuovo push o
+  "Trigger deploy"). Ogni deploy di produzione costa 15 crediti: meglio
+  raggruppare le modifiche invece di pubblicarle una alla volta.
+- **GitHub Pages**: anteprima gratuita, attiva da `main` / root su
+  **jacklamone.github.io/arilufarma**, si aggiorna a ogni push senza
+  consumare crediti. `.nojekyll` fa servire i file così come sono (niente
+  Jekyll, niente `.md` trasformati in pagine): non toglierlo.
+- **Noindex in demo**: tutte le pagine hanno
+  `<meta name="robots" content="noindex, nofollow">` perché il sito è
+  ancora in test. **Toglierlo al lancio ufficiale**, insieme al cambio del
+  numero WhatsApp (vedi sotto). Non usare `Disallow` in un robots.txt al
+  suo posto: impedirebbe ai motori di leggere il noindex.
 
 ## Struttura e caratteristiche
 
@@ -42,8 +54,9 @@ assets/oro/img/     Immagini prodotti e categorie
   n8n self-hosted su VPS Contabo + Google Sheets (gestionale) + Google
   Calendar. Guida in `chatbot/README.md`, workflow importabile in
   `chatbot/n8n/`. Nessun segreto nel repo: il `.env` vive solo sul VPS.
-  La cartella non fa parte del sito, ma su `main` verrebbe pubblicata
-  da Netlify come file statici (innocuo, niente credenziali).
+  La cartella non fa parte del sito, ma su `main` viene pubblicata da
+  Netlify e da GitHub Pages come file statici (innocuo, niente
+  credenziali, ma raggiungibile da chi conosce il percorso).
 - **Contatti**: tutte le CTA aprono il Chatbot su WhatsApp
   (wa.me/393297751951, numero di test — vedi nota sopra). La riga
   "Telefono" mostra solo il fisso 079 278245 (il numero del bot non è
@@ -51,3 +64,8 @@ assets/oro/img/     Immagini prodotti e categorie
   Indirizzo: Via Silvio Vardabasso 1/a, Sassari.
 - **Intro/loader**: dura 3s + 2s di dissolvenza (già accorciata: non
   allungarla di nuovo).
+- **Footer**: credito "© 2026 [logo] Intellecta Solutions" con link a
+  intellectasolutions.it (logo in `assets/img/intellecta-logo.webp`).
+  Le scritte del footer sono tarate per stare sopra 4,5:1 di contrasto:
+  non riabbassarle.
+- **Pulsante "Su"**: in basso a destra, centrato sopra il FAB WhatsApp.
